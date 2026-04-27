@@ -162,10 +162,9 @@ def root():
 # =====================
 # AUTH
 # =====================
-@app.post("/
-auth/registrar")
+@app.post("/auth/registrar")
 def registrar(usuario: UsuarioCreate):
-    print(f"DEBUG: email={usuario.email}, nombre={usuario.nombre}, password={usuario.password}")  # <-- AGREGAR
+    print(f"DEBUG: email={usuario.email}, nombre={usuario.nombre}, password={usuario.password}") # <-- AGREGAR
     
     existe = (
         supabase.table("usuarios")
