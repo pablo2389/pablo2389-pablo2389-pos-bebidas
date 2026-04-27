@@ -1,0 +1,48 @@
+version: '3.8'
+
+services:
+  # Backend FastAPI
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: backend
+    container_name: api-bebidas-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SECRET_KEY=${SECRET_KEY}
+    volumes:
+      - ./bebidas-api:/app/backend
+    command: uvicorn main:app --reload --host 0.0.0.0 --port 8000
+    networks:
+      - bebidas-network
+
+  # Frontend Next.js
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: frontend
+    container_name: api-bebidas-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8000
+    volumes:
+      - ./frontend:/app/frontend
+      - /app/frontend/.next
+    depends_on:
+      - backend
+    networks:
+      - bebidas-network
+
+networks:
+  bebidas-network:
+    driver: bridge
+
+volumes:
+  backend_data:
+  frontend_data:

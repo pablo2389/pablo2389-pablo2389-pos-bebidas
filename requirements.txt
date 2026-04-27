@@ -1,0 +1,13 @@
+fastapi
+uvicorn
+pandas
+matplotlib
+reportlab
+pywhatkit
+yagmail
+python-dotenv
+supabase
+PyJWT
+bcrypt
+python-multipart
+requests
