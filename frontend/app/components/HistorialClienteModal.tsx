@@ -59,7 +59,7 @@ export default function HistorialClienteModal({
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8000/clientes/historial/${encodeURIComponent(
+        `https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/historial/${encodeURIComponent(
           clienteNombre
         )}`,
         {
@@ -86,7 +86,7 @@ export default function HistorialClienteModal({
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `http://localhost:8000/clientes/marcar-pagado/${pedidoId}`,
+        `https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/marcar-pagado/${pedidoId}`,
         {
           method: "POST",
           headers: {

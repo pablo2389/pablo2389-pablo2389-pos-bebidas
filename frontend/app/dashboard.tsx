@@ -3,7 +3,7 @@ import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const API_URL = "http://localhost:8000";
+const API_URL = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
 const api = axios.create({ baseURL: API_URL });
 
 interface Estadisticas {

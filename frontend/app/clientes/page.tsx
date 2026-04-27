@@ -35,7 +35,7 @@ export default function ClientesPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/clientes/lista", {
+      const response = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/lista", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

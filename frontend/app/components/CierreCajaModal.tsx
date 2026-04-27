@@ -40,7 +40,7 @@ export default function CierreCajaModal({ isOpen, onClose }: Props) {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("http://localhost:8000/caja/cierre-hoy", {
+      const response = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/caja/cierre-hoy", {
         headers: {
           Authorization: `Bearer ${token}`,
         },

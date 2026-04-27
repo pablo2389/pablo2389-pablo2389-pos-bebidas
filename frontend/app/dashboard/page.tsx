@@ -51,7 +51,7 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("token");
 
-      const resCaja = await fetch("http://localhost:8000/dashboard/caja-hoy", {
+      const resCaja = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/dashboard/caja-hoy", {
         headers: { Authorization: `Bearer ${token}` },
       });
 
@@ -67,7 +67,7 @@ export default function DashboardPage() {
       const dataCaja = await resCaja.json();
       setData(dataCaja);
 
-      const resStock = await fetch("http://localhost:8000/dashboard/productos-bajo-stock", {
+      const resStock = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/dashboard/productos-bajo-stock", {
         headers: { Authorization: `Bearer ${token}` },
       });
 

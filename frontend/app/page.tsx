@@ -147,7 +147,7 @@ export default function CajaRapida() {
     const token = localStorage.getItem("token");
 
     try {
-      const resp = await fetch("http://localhost:8000/pedidos", {
+      const resp = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/pedidos", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -173,7 +173,7 @@ export default function CajaRapida() {
       setCliente("");
     } catch (err) {
       console.error(err);
-      alert("No se pudo conectar con el backend (localhost:8000)");
+      alert("No se pudo conectar con el backend (pablo2389-pablo2389-pos-bebidas.onrender.com)");
     }
   };
 

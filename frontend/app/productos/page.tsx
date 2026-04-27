@@ -35,7 +35,7 @@ export default function ProductosPage() {
         return;
       }
 
-      const res = await fetch("http://localhost:8000/productos", {
+      const res = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos", {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -91,7 +91,7 @@ export default function ProductosPage() {
       let res;
       if (editando) {
         // Actualizar
-        res = await fetch(`http://localhost:8000/productos/${editando.id}`, {
+        res = await fetch(`https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${editando.id}`, {
           method: "PUT",
           headers: {
             "Content-Type": "application/json",
@@ -101,7 +101,7 @@ export default function ProductosPage() {
         });
       } else {
         // Crear
-        res = await fetch("http://localhost:8000/productos", {
+        res = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos", {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -128,7 +128,7 @@ export default function ProductosPage() {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`http://localhost:8000/productos/${id}`, {
+      const res = await fetch(`https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${id}`, {
         method: "DELETE",
         headers: {
           Authorization: `Bearer ${token}`,
