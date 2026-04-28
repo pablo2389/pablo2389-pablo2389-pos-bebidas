@@ -398,6 +398,7 @@ export default function CajaRapida() {
               onClick={confirmarVenta}
               disabled={carrito.length === 0}
                            className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded disabled:opacity-50 sticky bottom-0 z-10 md:relative"
+            >
               Confirmar venta
             </button>
           </div>
