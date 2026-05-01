@@ -14,7 +14,9 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "POS Bebidas - Caja Registradora",
-  description: "Interfaz de caja registradora para ventas, carrito y envío de ticket por WhatsApp",
+  description:
+    "Interfaz de caja registradora para ventas, carrito y envío de ticket por WhatsApp",
+  viewport: "width=device-width, initial-scale=1.0",
 };
 
 export default function RootLayout({
@@ -24,10 +26,12 @@ export default function RootLayout({
 }>) {
   return (
     <html
-      lang="en"
+      lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col bg-slate-100">
+        {children}
+      </body>
     </html>
   );
 }

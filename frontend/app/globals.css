@@ -12,3 +12,34 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+/* Mobile responsive fixes */
+@media (max-width: 768px) {
+  /* Hacer tablas scrolleables horizontalmente */
+  .overflow-y-auto {
+    overflow-x: auto !important;
+  }
+
+  /* Asegurar que inputs sean legibles */
+  input,
+  select,
+  button {
+    font-size: 16px !important;
+    min-height: 44px !important;
+  }
+
+  /* Botones más grandes en mobile */
+  button {
+    padding: 12px 16px !important;
+  }
+
+  /* Tablas más compactas */
+  table {
+    font-size: 12px !important;
+  }
+
+  table input {
+    font-size: 14px !important;
+    min-height: 36px !important;
+  }
+}
