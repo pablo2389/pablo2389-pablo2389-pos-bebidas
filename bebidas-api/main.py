@@ -19,6 +19,9 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise Exception("Faltan variables .env")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
@@ -87,6 +90,57 @@ def root():
     return {"status": "ok"}
 
 # =====================
+# CAJA ESTADO (ON/OFF SYSTEM)
+# =====================
+
+@app.get("/caja/estado")
+def obtener_estado_caja(token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    res = supabase.table("caja_estado") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .order("updated_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    if not res.data:
+        return {"estado": "closed"}
+
+    return res.data[0]
+
+
+@app.post("/caja/toggle")
+def toggle_caja(token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+    user_id = token["user_id"]
+
+    res = supabase.table("caja_estado") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .order("updated_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    estado_actual = "closed"
+
+    if res.data:
+        estado_actual = res.data[0]["estado"]
+
+    nuevo_estado = "open" if estado_actual == "closed" else "closed"
+
+    supabase.table("caja_estado").insert({
+        "kiosco_id": kiosco_id,
+        "usuario_id": user_id,
+        "estado": nuevo_estado,
+        "updated_at": datetime.utcnow().isoformat()
+    }).execute()
+
+    return {"estado": nuevo_estado}
+
+# =====================
 # PRODUCTOS BAJO STOCK
 # =====================
 @app.get("/dashboard/productos-bajo-stock")
@@ -103,7 +157,7 @@ def productos_bajo_stock(token=Depends(verificar_token)):
     return res.data or []
 
 # =====================
-# CAJA HOY (🔥 FIX PRINCIPAL)
+# CAJA HOY
 # =====================
 @app.get("/dashboard/caja-hoy")
 def caja_hoy(token=Depends(verificar_token)):
@@ -150,3 +204,95 @@ def clientes_lista(token=Depends(verificar_token)):
         .execute()
 
     return res.data or []
+
+# =====================
+# PRODUCTOS
+# =====================
+@app.get("/productos")
+def get_productos(token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    return supabase.table("productos") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .execute().data
+
+
+@app.post("/productos")
+def crear_producto(prod: Producto, token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    return supabase.table("productos").insert({
+        "nombre": prod.nombre,
+        "precio": prod.precio,
+        "stock": prod.stock,
+        "kiosco_id": kiosco_id
+    }).execute().data
+
+# =====================
+# PEDIDOS (CON BLOQUEO DE CAJA)
+# =====================
+@app.post("/pedidos")
+def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    # 🔒 VALIDAR CAJA ABIERTA
+    caja = supabase.table("caja_estado") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .order("updated_at", desc=True) \
+        .limit(1) \
+        .execute()
+
+    estado = "closed"
+    if caja.data:
+        estado = caja.data[0]["estado"]
+
+    if estado != "open":
+        raise HTTPException(403, "La caja está cerrada")
+
+    # CREAR PEDIDO
+    pedido_res = supabase.table("pedidos").insert({
+        "cliente": pedido.cliente,
+        "metodo_pago": pedido.metodo_pago,
+        "kiosco_id": kiosco_id,
+        "created_at": datetime.utcnow().isoformat()
+    }).execute()
+
+    pedido_id = pedido_res.data[0]["id"]
+
+    total = 0
+
+    for item in pedido.items:
+
+        prod = supabase.table("productos") \
+            .select("*") \
+            .eq("id", item.producto_id) \
+            .execute().data[0]
+
+        subtotal = prod["precio"] * item.cantidad
+        total += subtotal
+
+        supabase.table("pedido_items").insert({
+            "pedido_id": pedido_id,
+            "producto_id": item.producto_id,
+            "cantidad": item.cantidad,
+            "precio_unitario": prod["precio"],
+            "kiosco_id": kiosco_id
+        }).execute()
+
+        supabase.table("productos").update({
+            "stock": prod["stock"] - item.cantidad
+        }).eq("id", item.producto_id).execute()
+
+    supabase.table("pedidos").update({
+        "total": total
+    }).eq("id", pedido_id).execute()
+
+    return {
+        "total": total,
+        "pedido_id": pedido_id
+    }
