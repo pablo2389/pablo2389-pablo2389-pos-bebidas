@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from supabase import create_client, Client
 from datetime import datetime, timedelta
-import os
+import os  
 from dotenv import load_dotenv
 import jwt
 import uuid
@@ -224,13 +224,10 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         "total": total
     }).eq("id", pedido_id).execute()
 
-    return {"total": total, "pedido_id": pedido_id}
-
-
+    return {"total": total, "pedido_id": pedido_id}# =====================
+# CAJA DEL DÍA
 # =====================
-# CAJA DEL DÍA (FIX ERROR DASHBOARD)
-# =====================
-@app.get("/caja/hoy")
+@app.get("/dashboard/caja-hoy")
 def caja_hoy(token=Depends(verificar_token)):
 
     kiosco_id = token["kiosco_id"]
@@ -253,3 +250,36 @@ def caja_hoy(token=Depends(verificar_token)):
         "cantidad_ventas": len(pedidos),
         "fecha": str(hoy)
     }
+
+
+# =====================
+# PRODUCTOS BAJO STOCK
+# =====================
+@app.get("/dashboard/productos-bajo-stock")
+def productos_bajo_stock(token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    res = supabase.table("productos") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .lt("stock", 5) \
+        .execute()
+
+    return res.data
+
+
+# =====================
+# CLIENTES
+# =====================
+@app.get("/clientes/lista")
+def clientes_lista(token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    res = supabase.table("clientes") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .execute()
+
+    return res.data 
