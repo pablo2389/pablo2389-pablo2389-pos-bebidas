@@ -2,44 +2,122 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
-  --background: #f5e6d3;
-  --foreground: #000000;
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-
-/* Mobile responsive fixes */
-@media (max-width: 768px) {
-  /* Hacer tablas scrolleables horizontalmente */
-  .overflow-y-auto {
-    overflow-x: auto !important;
+@layer base {
+  :root {
+    --background: #f5e6d3;
+    --foreground: #000000;
   }
 
-  /* Asegurar que inputs sean legibles */
+  html,
+  body {
+    margin: 0;
+    padding: 0;
+    min-height: 100%;
+    overflow-x: hidden;
+  }
+
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-family: Arial, Helvetica, sans-serif;
+  }
+
+  /* =========================================
+     1. MÓVIL (Estilos por defecto)
+     ========================================= */
+
+  /* Asegurar que inputs sean legibles y evitar zoom automático en iOS */
   input,
   select,
-  button {
-    font-size: 16px !important;
-    min-height: 44px !important;
+  textarea {
+    font-size: 16px;
+    min-height: 44px; /* Área táctil recomendada para dedos */
   }
 
-  /* Botones más grandes en mobile */
+  /* Botones amplios para pantallas táctiles */
   button {
-    padding: 12px 16px !important;
+    font-size: 16px;
+    min-height: 44px;
+    padding: 12px 16px;
   }
 
-  /* Tablas más compactas */
+  /* Tablas compactas en móvil */
   table {
-    font-size: 12px !important;
+    font-size: 12px;
+    width: 100%;
   }
 
   table input {
-    font-size: 14px !important;
-    min-height: 36px !important;
+    font-size: 14px;
+    min-height: 36px;
   }
+
+  /* =========================================
+     2. TABLET (Pantallas de 768px en adelante)
+     ========================================= */
+  @media (min-width: 768px) {
+    table {
+      font-size: 14px; /* Aumentamos legibilidad en tablet */
+    }
+
+    button {
+      padding: 10px 16px; /* Ajuste proporcional */
+    }
+  }
+
+  /* =========================================
+     3. PC / ESCRITORIO (Pantallas de 1024px en adelante)
+     ========================================= */
+  @media (min-width: 1024px) {
+    input,
+    select,
+    textarea {
+      font-size: 14px; /* En PC el texto puede ser más pequeño */
+      min-height: 38px; /* No se necesita un área táctil tan grande (uso de mouse) */
+    }
+
+    button {
+      font-size: 14px;
+      min-height: 38px;
+      padding: 8px 16px;
+    }
+
+    table {
+      font-size: 16px; /* Tamaño de lectura normal para PC */
+    }
+
+    table input {
+      font-size: 14px;
+    }
+  }
+}
+
+@layer utilities {
+  /*
+    En lugar de sobrescribir .overflow-y-auto (lo cual causa conflictos),
+    usa esta clase contenedora para envolver tus etiquetas <table> en el HTML.
+  */
+  .table-responsive-container {
+    @apply w-full overflow-x-auto block whitespace-nowrap;
+  }
+}
+
+/* Extra refuerzo para móvil */
+@media (max-width: 640px) {
+  .table-responsive-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+}
+
+/* Aseguramos que la tabla no colapse */
+.table-responsive-container {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+table {
+  width: 100%;
+  min-width: 500px; /* Evita que la tabla se colapse en pantallas muy chicas */
 }
