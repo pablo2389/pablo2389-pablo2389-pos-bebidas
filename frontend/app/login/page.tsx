@@ -30,7 +30,6 @@ export default function Login() {
           throw new Error("Nombre obligatorio");
         }
 
-        // REGISTRO: se mantiene igual, body JSON
         res = await api("/auth/registrar", {
           method: "POST",
           body: JSON.stringify({
@@ -40,14 +39,12 @@ export default function Login() {
           }),
         });
       } else {
-        // LOGIN: enviar email y password como query params
-        const params = new URLSearchParams({
-          email: cleanEmail,
-          password: cleanPassword,
-        });
-
-        res = await api(`/auth/login?${params.toString()}`, {
+        res = await api("/auth/login", {
           method: "POST",
+          body: JSON.stringify({
+            email: cleanEmail,
+            password: cleanPassword,
+          }),
         });
       }
 

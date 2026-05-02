@@ -19,9 +19,12 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 
+if not SUPABASE_URL or not SUPABASE_KEY:
+    raise Exception("Faltan SUPABASE_URL o SUPABASE_KEY")
+
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-app = FastAPI()
+app = FastAPI(title="API POS Bebidas", version="1.0.0")
 
 # =====================
 # CORS
