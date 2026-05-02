@@ -194,7 +194,7 @@ export default function CajaRapida() {
       </header>
 
       {/* Main responsive */}
-      <main className="max-w-6xl mx-auto px-2 py-3 grid grid-cols-1 md:grid-cols-12 gap-3">
+      <main className="max-w-6xl mx-auto px-2 py-3 pb-24 md:pb-3 grid grid-cols-1 md:grid-cols-12 gap-3">
         {/* Columna de Carga */}
         <div className="md:col-span-4 flex flex-col gap-3">
           <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
@@ -307,7 +307,7 @@ export default function CajaRapida() {
               </div>
             </div>
 
-            <div className="pt-3 border-t">
+            <div className="pt-3 border-t md:pt-3 md:border-t">
               <div className="flex justify-between items-center mb-3">
                 <span className="text-slate-500 font-medium text-sm">
                   TOTAL:
@@ -317,21 +317,26 @@ export default function CajaRapida() {
                 </span>
               </div>
 
-              <button
-                onClick={confirmarVenta}
-                disabled={carrito.length === 0}
-                className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl disabled:opacity-50 shadow-lg transition-all transform active:scale-95 mb-2 text-sm md:text-base"
-              >
-                CONFIRMAR VENTA
-              </button>
+              {/* Footer fijo en móvil, normal en desktop */}
+              <div className="fixed left-0 right-0 bottom-0 z-50 bg-white/95 border-t px-3 py-2 md:static md:bg-transparent md:border-0 md:px-0 md:py-0">
+                <div className="max-w-6xl mx-auto">
+                  <button
+                    onClick={confirmarVenta}
+                    disabled={carrito.length === 0}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl disabled:opacity-50 shadow-lg transition-all transform active:scale-95 mb-2 text-sm md:text-base"
+                  >
+                    CONFIRMAR VENTA
+                  </button>
 
-              <button
-                type="button"
-                onClick={enviarTicketWhatsApp}
-                className="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2 md:py-3 rounded-lg text-xs md:text-sm font-bold transition-all"
-              >
-                Enviar Ticket WhatsApp
-              </button>
+                  <button
+                    type="button"
+                    onClick={enviarTicketWhatsApp}
+                    className="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2 md:py-3 rounded-lg text-xs md:text-sm font-bold transition-all"
+                  >
+                    Enviar Ticket WhatsApp
+                  </button>
+                </div>
+              </div>
             </div>
           </section>
         </div>
