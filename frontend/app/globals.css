@@ -22,26 +22,24 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* =========================================
-     1. MÓVIL (Estilos por defecto)
-     ========================================= */
+  /* ===== 1. MÓVIL (por defecto) ===== */
 
-  /* Asegurar que inputs sean legibles y evitar zoom automático en iOS */
+  /* Inputs legibles y sin zoom raro en iOS */
   input,
   select,
   textarea {
     font-size: 16px;
-    min-height: 44px; /* Área táctil recomendada para dedos */
+    min-height: 44px; /* área táctil cómoda */
   }
 
-  /* Botones amplios para pantallas táctiles */
+  /* Botones táctiles */
   button {
     font-size: 16px;
     min-height: 44px;
     padding: 12px 16px;
   }
 
-  /* Tablas compactas en móvil */
+  /* Tablas en móvil */
   table {
     font-size: 12px;
     width: 100%;
@@ -52,28 +50,24 @@
     min-height: 36px;
   }
 
-  /* =========================================
-     2. TABLET (Pantallas de 768px en adelante)
-     ========================================= */
+  /* ===== 2. TABLET (>=768px) ===== */
   @media (min-width: 768px) {
     table {
-      font-size: 14px; /* Aumentamos legibilidad en tablet */
+      font-size: 14px;
     }
 
     button {
-      padding: 10px 16px; /* Ajuste proporcional */
+      padding: 10px 16px;
     }
   }
 
-  /* =========================================
-     3. PC / ESCRITORIO (Pantallas de 1024px en adelante)
-     ========================================= */
+  /* ===== 3. DESKTOP (>=1024px) ===== */
   @media (min-width: 1024px) {
     input,
     select,
     textarea {
-      font-size: 14px; /* En PC el texto puede ser más pequeño */
-      min-height: 38px; /* No se necesita un área táctil tan grande (uso de mouse) */
+      font-size: 14px;
+      min-height: 38px;
     }
 
     button {
@@ -83,7 +77,7 @@
     }
 
     table {
-      font-size: 16px; /* Tamaño de lectura normal para PC */
+      font-size: 16px;
     }
 
     table input {
@@ -93,16 +87,13 @@
 }
 
 @layer utilities {
-  /*
-    En lugar de sobrescribir .overflow-y-auto (lo cual causa conflictos),
-    usa esta clase contenedora para envolver tus etiquetas <table> en el HTML.
-  */
+  /* Contenedor para tablas scrolleables en móvil */
   .table-responsive-container {
     @apply w-full overflow-x-auto block whitespace-nowrap;
   }
 }
 
-/* Extra refuerzo para móvil */
+/* Refuerzo para scroll suave en móvil */
 @media (max-width: 640px) {
   .table-responsive-container {
     overflow-x: auto;
@@ -110,7 +101,7 @@
   }
 }
 
-/* Aseguramos que la tabla no colapse */
+/* Aseguramos que la tabla no colapse en pantallas angostas */
 .table-responsive-container {
   width: 100%;
   overflow-x: auto;
@@ -119,5 +110,5 @@
 
 table {
   width: 100%;
-  min-width: 500px; /* Evita que la tabla se colapse en pantallas muy chicas */
+  min-width: 500px; /* evita que la tabla se haga una columna ridícula */
 }
