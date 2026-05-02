@@ -31,7 +31,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
-        "https://kiosco-grace.vercel.app",  # 👈 tu frontend en Vercel
+        "https://kiosco-grace.vercel.app",  # frontend en Vercel
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -53,7 +53,6 @@ def crear_token(user_id, email, rol, kiosco_id):
     }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
-
 def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
     try:
         return jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
@@ -73,20 +72,21 @@ class UsuarioCreate(BaseModel):
     password: str
 
 # =====================
-# LOGIN (FIX REAL)
+# LOGIN (BODY JSON)
 # =====================
 @app.post("/auth/login")
 def login(data: Login):
-
-    res = supabase.table("usuarios") \
-        .select("*") \
-        .eq("email", data.email) \
+    res = (
+        supabase.table("usuarios")
+        .select("*")
+        .eq("email", data.email)
         .execute()
+    )
 
     if not res.data:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    user = res.data[0]
+    user = res.data[0]  # tomar el primer usuario
 
     if user["password"] != data.password:
         raise HTTPException(status_code=401, detail="Password incorrecto")
@@ -95,12 +95,12 @@ def login(data: Login):
         user["id"],
         user["email"],
         user["rol"],
-        user["kiosco_id"]
+        user["kiosco_id"],
     )
 
     return {
         "token": token,
-        "nombre": user["nombre"]
+        "nombre": user["nombre"],
     }
 
 # =====================
@@ -108,29 +108,34 @@ def login(data: Login):
 # =====================
 @app.post("/auth/registrar")
 def registrar(usuario: UsuarioCreate):
-
-    existe = supabase.table("usuarios") \
-        .select("id") \
-        .eq("email", usuario.email) \
+    existe = (
+        supabase.table("usuarios")
+        .select("id")
+        .eq("email", usuario.email)
         .execute()
+    )
 
     if existe.data:
         raise HTTPException(status_code=400, detail="Usuario ya existe")
 
     kiosco_id = str(uuid.uuid4())
 
-    supabase.table("kioscos").insert({
-        "id": kiosco_id,
-        "nombre": f"Kiosco de {usuario.nombre}"
-    }).execute()
+    supabase.table("kioscos").insert(
+        {
+            "id": kiosco_id,
+            "nombre": f"Kiosco de {usuario.nombre}",
+        }
+    ).execute()
 
-    res = supabase.table("usuarios").insert({
-        "email": usuario.email,
-        "nombre": usuario.nombre,
-        "password": usuario.password,
-        "rol": "admin",
-        "kiosco_id": kiosco_id
-    }).execute()
+    res = supabase.table("usuarios").insert(
+        {
+            "email": usuario.email,
+            "nombre": usuario.nombre,
+            "password": usuario.password,
+            "rol": "admin",
+            "kiosco_id": kiosco_id,
+        }
+    ).execute()
 
     user = res.data[0]
 
@@ -138,7 +143,7 @@ def registrar(usuario: UsuarioCreate):
 
     return {
         "token": token,
-        "nombre": user["nombre"]
+        "nombre": user["nombre"],
     }
 
 # =====================
@@ -146,16 +151,17 @@ def registrar(usuario: UsuarioCreate):
 # =====================
 @app.get("/dashboard/caja-hoy")
 def caja_hoy(token=Depends(verificar_token)):
-
     kiosco_id = token["kiosco_id"]
     hoy = datetime.now().date()
 
-    res = supabase.table("pedidos") \
-        .select("total, metodo_pago") \
-        .eq("kiosco_id", kiosco_id) \
-        .gte("created_at", f"{hoy}T00:00:00") \
-        .lte("created_at", f"{hoy}T23:59:59") \
+    res = (
+        supabase.table("pedidos")
+        .select("total, metodo_pago")
+        .eq("kiosco_id", kiosco_id)
+        .gte("created_at", f"{hoy}T00:00:00")
+        .lte("created_at", f"{hoy}T23:59:59")
         .execute()
+    )
 
     pedidos = res.data or []
 
@@ -172,7 +178,7 @@ def caja_hoy(token=Depends(verificar_token)):
     return {
         "total": total,
         "cantidad_pedidos": len(pedidos),
-        "por_metodo": por_metodo
+        "por_metodo": por_metodo,
     }
 
 # =====================
@@ -180,13 +186,14 @@ def caja_hoy(token=Depends(verificar_token)):
 # =====================
 @app.get("/dashboard/productos-bajo-stock")
 def productos_bajo_stock(token=Depends(verificar_token)):
-
     kiosco_id = token["kiosco_id"]
 
-    res = supabase.table("productos") \
-        .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .lt("stock", 5) \
+    res = (
+        supabase.table("productos")
+        .select("*")
+        .eq("kiosco_id", kiosco_id)
+        .lt("stock", 5)
         .execute()
+    )
 
     return res.data or []
