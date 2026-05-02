@@ -9,6 +9,8 @@ type ItemCarrito = {
   precioUnitario: number;
 };
 
+type Vista = "carga" | "carrito";
+
 export default function CajaRapida() {
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [descripcion, setDescripcion] = useState("");
@@ -18,6 +20,7 @@ export default function CajaRapida() {
   const [metodoPago, setMetodoPago] = useState("efectivo");
   const [ultimoId, setUltimoId] = useState(1);
   const [whatsapp, setWhatsapp] = useState("");
+  const [vista, setVista] = useState<Vista>("carga"); // móvil: carga | carrito
 
   const safeNumber = (v: unknown): number => {
     const n = Number(v);
@@ -160,7 +163,7 @@ export default function CajaRapida() {
   };
 
   return (
-    <div className="bg-slate-100 overflow-x-hidden">
+    <div className="bg-slate-100 overflow-x-hidden min-h-screen">
       {/* Header */}
       <header className="px-3 py-2 md:px-4 md:py-4 border-b bg-white shadow-sm">
         <div className="max-w-6xl mx-auto">
@@ -173,250 +176,290 @@ export default function CajaRapida() {
         </div>
       </header>
 
-      {/* Main */}
-      <main className="max-w-6xl mx-auto px-2 py-3 pb-32 md:pb-6 grid grid-cols-1 md:grid-cols-12 gap-3">
-        {/* Columna de carga */}
-        <div className="md:col-span-4 flex flex-col gap-3">
-          {/* Nuevo ítem */}
-          <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
-            <h2 className="text-base md:text-lg font-semibold border-b pb-2">
-              Nuevo Ítem
-            </h2>
-
-            <div className="space-y-2">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">
-                  Descripción
-                </label>
-                <input
-                  value={descripcion}
-                  onChange={(e) => setDescripcion(e.target.value)}
-                  className="border-slate-300 border px-3 py-2 w-full rounded-lg text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="Ej: Coca 2.25L"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">
-                    Precio
-                  </label>
-                  <input
-                    type="number"
-                    value={precio}
-                    onChange={(e) => setPrecio(e.target.value)}
-                    className="border-slate-300 border px-3 py-2 w-full rounded-lg text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="0"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">
-                    Cantidad
-                  </label>
-                  <input
-                    type="number"
-                    value={cantidad}
-                    onChange={(e) => setCantidad(e.target.value)}
-                    className="border-slate-300 border px-3 py-2 w-full rounded-lg text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none transition-all text-center"
-                    min={1}
-                  />
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2 pt-1">
-              <button
-                onClick={agregarItem}
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 md:py-3 rounded-lg shadow-md transition-colors"
-              >
-                Agregar
-              </button>
-              <button
-                onClick={vaciarCaja}
-                className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-3 py-2 md:px-4 md:py-3 rounded-lg text-xs md:text-sm font-medium transition-colors"
-              >
-                Reset
-              </button>
-            </div>
-          </section>
-
-          {/* Finalizar */}
-          <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
-            <h2 className="text-base md:text-lg font-semibold border-b pb-2">
-              Finalizar
-            </h2>
-
-            <div className="space-y-2">
-              <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">
-                  Cliente
-                </label>
-                <input
-                  value={cliente}
-                  onChange={(e) => setCliente(e.target.value)}
-                  className="border-slate-300 border px-3 py-2 w-full rounded-lg text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="Nombre del cliente"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">
-                  Método de pago
-                </label>
-                <select
-                  value={metodoPago}
-                  onChange={(e) => setMetodoPago(e.target.value)}
-                  className="border-slate-300 border px-3 py-2 w-full rounded-lg text-sm md:text-base bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                >
-                  <option value="efectivo">Efectivo</option>
-                  <option value="transferencia">Transferencia</option>
-                  <option value="mp">MercadoPago</option>
-                  <option value="fiado">Fiado</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">
-                  WhatsApp
-                </label>
-                <input
-                  value={whatsapp}
-                  onChange={(e) => setWhatsapp(e.target.value)}
-                  className="border-slate-300 border px-3 py-2 w-full rounded-lg text-sm md:text-base focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  placeholder="549..."
-                />
-              </div>
-            </div>
-
-            <div className="pt-3 border-t">
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-slate-500 font-medium text-sm">
-                  TOTAL:
-                </span>
-                <span className="text-xl md:text-2xl font-black text-blue-600">
-                  {formatCurrency(total)}
-                </span>
-              </div>
-
-              {/* Botones en desktop */}
-              <div className="hidden md:flex flex-col gap-2">
-                <button
-                  onClick={confirmarVenta}
-                  disabled={carrito.length === 0}
-                  className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 rounded-xl disabled:opacity-50 shadow-lg transition-all transform active:scale-95"
-                >
-                  CONFIRMAR VENTA
-                </button>
-                <button
-                  onClick={enviarTicketWhatsApp}
-                  className="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-3 rounded-lg text-sm font-bold transition-all"
-                >
-                  Enviar Ticket WhatsApp
-                </button>
-              </div>
-            </div>
-          </section>
+      <main className="max-w-6xl mx-auto px-2 py-2 pb-24 md:pb-6">
+        {/* Toggle de vistas solo en móvil */}
+        <div className="md:hidden flex justify-between items-center mb-2">
+          <button
+            onClick={() => setVista("carga")}
+            className={`flex-1 mr-1 text-xs py-2 rounded-lg border ${
+              vista === "carga"
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-slate-700"
+            }`}
+          >
+            Cargar productos
+          </button>
+          <button
+            onClick={() => setVista("carrito")}
+            className={`flex-1 ml-1 text-xs py-2 rounded-lg border ${
+              vista === "carrito"
+                ? "bg-blue-600 text-white border-blue-600"
+                : "bg-white text-slate-700"
+            }`}
+          >
+            Ver carrito ({carrito.length})
+          </button>
         </div>
 
-        {/* Columna de carrito */}
-        <div className="md:col-span-8">
-          <section className="bg-white border rounded-xl shadow-sm h-fit">
-            <div className="p-3 md:p-4 border-b bg-slate-50 flex justify-between items-center">
-              <h2 className="text-base md:text-lg font-semibold text-slate-800">
-                Carrito ({carrito.length})
+        {/* Layout desktop: dos columnas, móvil: según vista */}
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
+          {/* Columna de carga */}
+          <div
+            className={`md:col-span-4 flex flex-col gap-3 ${
+              vista === "carga" ? "block" : "hidden md:block"
+            }`}
+          >
+            {/* Nuevo ítem */}
+            <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
+              <h2 className="text-sm md:text-lg font-semibold border-b pb-2">
+                Nuevo Ítem
               </h2>
-              {carrito.length > 0 && (
-                <span className="text-xs md:text-sm font-bold text-blue-600 md:hidden">
-                  {formatCurrency(total)}
-                </span>
-              )}
-            </div>
 
-            <div className="table-responsive-container">
-              {carrito.length === 0 ? (
-                <div className="p-8 text-center text-gray-400">
-                  <p className="text-base md:text-lg">El carrito está vacío</p>
-                  <p className="text-xs md:text-sm">
-                    Agregá productos para empezar
-                  </p>
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
+                    Descripción
+                  </label>
+                  <input
+                    value={descripcion}
+                    onChange={(e) => setDescripcion(e.target.value)}
+                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    placeholder="Ej: Coca 2.25L"
+                  />
                 </div>
-              ) : (
-                <table className="text-sm">
-                  <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                    <tr>
-                      <th className="px-4 py-3 text-left">Producto</th>
-                      <th className="px-4 py-3 text-center">Cant.</th>
-                      <th className="px-4 py-3 text-right">Unitario</th>
-                      <th className="px-4 py-3 text-right">Subtotal</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {carrito.map((item) => {
-                      const subt =
-                        safeNumber(item.cantidad) *
-                        safeNumber(item.precioUnitario);
-                      return (
-                        <tr
-                          key={item.id}
-                          className="hover:bg-slate-50 transition-colors"
-                        >
-                          <td className="px-4 py-4 font-medium text-slate-800">
-                            {item.descripcion}
-                          </td>
-                          <td className="px-4 py-4">
-                            <div className="flex items-center justify-center gap-2">
-                              <button
-                                onClick={() => decrementarCantidad(item.id)}
-                                className="w-8 h-8 flex items-center justify-center border rounded-full bg-white hover:bg-red-50 hover:text-red-600 transition-all"
-                              >
-                                -
-                              </button>
-                              <span className="w-8 text-center font-bold">
-                                {item.cantidad}
-                              </span>
-                              <button
-                                onClick={() => incrementarCantidad(item.id)}
-                                className="w-8 h-8 flex items-center justify-center border rounded-full bg-white hover:bg-green-50 hover:text-green-600 transition-all"
-                              >
-                                +
-                              </button>
-                            </div>
-                          </td>
-                          <td className="px-4 py-4 text-right">
-                            {formatCurrency(item.precioUnitario)}
-                          </td>
-                          <td className="px-4 py-4 text-right font-bold text-slate-900">
-                            {formatCurrency(subt)}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              )}
-            </div>
-          </section>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
+                      Precio
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="decimal"
+                      value={precio}
+                      onChange={(e) => setPrecio(e.target.value)}
+                      className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                      placeholder="0"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
+                      Cantidad
+                    </label>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      value={cantidad}
+                      onChange={(e) => setCantidad(e.target.value)}
+                      className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-center"
+                      min={1}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={agregarItem}
+                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 md:py-2.5 rounded-md shadow-md text-xs md:text-sm transition-colors"
+                >
+                  Agregar
+                </button>
+                <button
+                  onClick={vaciarCaja}
+                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-2 md:px-3 md:py-2.5 rounded-md text-[11px] md:text-xs font-medium transition-colors"
+                >
+                  Reset
+                </button>
+              </div>
+            </section>
+
+            {/* Finalizar */}
+            <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
+              <h2 className="text-sm md:text-lg font-semibold border-b pb-2">
+                Finalizar
+              </h2>
+
+              <div className="space-y-2">
+                <div>
+                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
+                    Cliente
+                  </label>
+                  <input
+                    value={cliente}
+                    onChange={(e) => setCliente(e.target.value)}
+                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    placeholder="Nombre del cliente"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
+                    Método de pago
+                  </label>
+                  <select
+                    value={metodoPago}
+                    onChange={(e) => setMetodoPago(e.target.value)}
+                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                  >
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="mp">MercadoPago</option>
+                    <option value="fiado">Fiado</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
+                    WhatsApp
+                  </label>
+                  <input
+                    value={whatsapp}
+                    onChange={(e) => setWhatsapp(e.target.value)}
+                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                    placeholder="549..."
+                  />
+                </div>
+              </div>
+
+              <div className="pt-3 border-t">
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-slate-500 font-medium text-xs md:text-sm">
+                    TOTAL:
+                  </span>
+                  <span className="text-lg md:text-2xl font-black text-blue-600">
+                    {formatCurrency(total)}
+                  </span>
+                </div>
+
+                {/* Botones en desktop */}
+                <div className="hidden md:flex flex-col gap-2">
+                  <button
+                    onClick={confirmarVenta}
+                    disabled={carrito.length === 0}
+                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl disabled:opacity-50 shadow-lg transition-all transform active:scale-95 text-sm"
+                  >
+                    CONFIRMAR VENTA
+                  </button>
+                  <button
+                    onClick={enviarTicketWhatsApp}
+                    className="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2.5 rounded-lg text-xs font-bold transition-all"
+                  >
+                    Enviar Ticket WhatsApp
+                  </button>
+                </div>
+              </div>
+            </section>
+          </div>
+
+          {/* Columna de carrito */}
+          <div
+            className={`md:col-span-8 ${
+              vista === "carrito" ? "block" : "hidden md:block"
+            }`}
+          >
+            <section className="bg-white border rounded-xl shadow-sm h-fit">
+              <div className="p-3 md:p-4 border-b bg-slate-50 flex justify-between items-center">
+                <h2 className="text-sm md:text-lg font-semibold text-slate-800">
+                  Carrito ({carrito.length})
+                </h2>
+                {carrito.length > 0 && (
+                  <span className="text-xs md:text-sm font-bold text-blue-600 md:hidden">
+                    {formatCurrency(total)}
+                  </span>
+                )}
+              </div>
+
+              <div className="table-responsive-container">
+                {carrito.length === 0 ? (
+                  <div className="p-8 text-center text-gray-400">
+                    <p className="text-base md:text-lg">
+                      El carrito está vacío
+                    </p>
+                    <p className="text-xs md:text-sm">
+                      Agregá productos para empezar
+                    </p>
+                  </div>
+                ) : (
+                  <table className="text-xs md:text-sm">
+                    <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
+                      <tr>
+                        <th className="px-4 py-3 text-left">Producto</th>
+                        <th className="px-4 py-3 text-center">Cant.</th>
+                        <th className="px-4 py-3 text-right">Unitario</th>
+                        <th className="px-4 py-3 text-right">Subtotal</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {carrito.map((item) => {
+                        const subt =
+                          safeNumber(item.cantidad) *
+                          safeNumber(item.precioUnitario);
+                        return (
+                          <tr
+                            key={item.id}
+                            className="hover:bg-slate-50 transition-colors"
+                          >
+                            <td className="px-4 py-3 font-medium text-slate-800">
+                              {item.descripcion}
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-center gap-2">
+                                <button
+                                  onClick={() => decrementarCantidad(item.id)}
+                                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-full bg-white hover:bg-red-50 hover:text-red-600 transition-all text-xs"
+                                >
+                                  -
+                                </button>
+                                <span className="w-8 text-center font-bold text-xs md:text-sm">
+                                  {item.cantidad}
+                                </span>
+                                <button
+                                  onClick={() => incrementarCantidad(item.id)}
+                                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-full bg-white hover:bg-green-50 hover:text-green-600 transition-all text-xs"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {formatCurrency(item.precioUnitario)}
+                            </td>
+                            <td className="px-4 py-3 text-right font-bold text-slate-900">
+                              {formatCurrency(subt)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </div>
         </div>
       </main>
 
-      {/* Footer fijo solo móvil */}
-      <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t p-4 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-        <div className="flex flex-col gap-2">
-          <button
-            onClick={confirmarVenta}
-            disabled={carrito.length === 0}
-            className="w-full bg-green-600 text-white font-bold py-4 rounded-xl shadow-lg active:scale-95 transition-transform disabled:opacity-50"
-          >
-            CONFIRMAR VENTA ({formatCurrency(total)})
-          </button>
-          <button
-            onClick={enviarTicketWhatsApp}
-            className="w-full bg-emerald-100 text-emerald-700 font-bold py-3 rounded-lg text-sm"
-          >
-            Enviar WhatsApp
-          </button>
+      {/* Footer fijo solo móvil y solo en vista carrito */}
+      {vista === "carrito" && (
+        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t px-3 py-3 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
+          <div className="flex flex-col gap-2">
+            <button
+              onClick={confirmarVenta}
+              disabled={carrito.length === 0}
+              className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg shadow-md active:scale-95 transition-transform disabled:opacity-50 text-sm"
+            >
+              CONFIRMAR VENTA ({formatCurrency(total)})
+            </button>
+            <button
+              onClick={enviarTicketWhatsApp}
+              className="w-full bg-emerald-100 text-emerald-700 font-semibold py-2.5 rounded-lg text-xs"
+            >
+              Enviar WhatsApp
+            </button>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }
