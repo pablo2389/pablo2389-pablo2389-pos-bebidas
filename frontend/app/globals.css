@@ -22,8 +22,9 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* ===== 1. MOBILE FIRST ===== */
-
+  /* =====================
+     INPUTS / SELECTS
+  ===================== */
   input,
   select,
   textarea {
@@ -32,6 +33,9 @@
     width: 100%;
   }
 
+  /* =====================
+     BOTONES (MOBILE FIRST)
+  ===================== */
   button {
     font-size: 14px;
     min-height: 40px;
@@ -39,9 +43,13 @@
     width: 100%;
   }
 
+  /* =====================
+     TABLAS BASE
+  ===================== */
   table {
     width: 100%;
     font-size: 12px;
+    border-collapse: collapse;
   }
 
   table input {
@@ -49,14 +57,18 @@
     min-height: 32px;
   }
 
-  /* ===== 2. TABLET (>=640px) ===== */
+  /* =====================
+     TABLET
+  ===================== */
   @media (min-width: 640px) {
     button {
       width: auto;
     }
   }
 
-  /* ===== 3. TABLET GRANDE (>=768px) ===== */
+  /* =====================
+     TABLET GRANDE
+  ===================== */
   @media (min-width: 768px) {
     table {
       font-size: 14px;
@@ -67,7 +79,9 @@
     }
   }
 
-  /* ===== 4. DESKTOP (>=1024px) ===== */
+  /* =====================
+     DESKTOP
+  ===================== */
   @media (min-width: 1024px) {
     input,
     select,
@@ -92,25 +106,13 @@
   }
 }
 
-/* ===== UTILIDADES ===== */
-
+/* =====================
+   UTILIDADES
+===================== */
 @layer utilities {
   .table-responsive-container {
-    @apply w-full overflow-x-auto block;
+    width: 100%;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
-  }
-}
-
-/* ===== COMPORTAMIENTO RESPONSIVE DE TABLAS ===== */
-
-/* En MOBILE → NO forzamos ancho */
-table {
-  width: 100%;
-}
-
-/* En pantallas medianas/grandes recién permitimos ancho mínimo */
-@media (min-width: 640px) {
-  table {
-    min-width: 500px;
   }
 }
