@@ -31,14 +31,13 @@ export default function CajaRapida() {
       style: "currency",
       currency: "ARS",
       minimumFractionDigits: 2,
-    }).format(value); // [web:27][web:83]
+    }).format(value);
 
   const total = useMemo(
     () =>
       carrito.reduce(
         (acc, item) =>
-          acc +
-          safeNumber(item.precioUnitario) * safeNumber(item.cantidad),
+          acc + safeNumber(item.precioUnitario) * safeNumber(item.cantidad),
         0
       ),
     [carrito]
@@ -190,7 +189,7 @@ export default function CajaRapida() {
     );
 
     const url = `https://wa.me/${phone}?text=${mensaje}`;
-    window.open(url, "_blank"); // [web:79][web:84]
+    window.open(url, "_blank");
   };
 
   // =====================
@@ -198,163 +197,182 @@ export default function CajaRapida() {
   // =====================
 
   return (
-    <div className="h-screen flex flex-col bg-slate-100">
-      <header className="px-6 py-3 border-b bg-white flex justify-between items-center">
+    <div className="min-h-screen bg-slate-100 overflow-x-hidden">
+      <header className="px-4 sm:px-6 py-3 border-b bg-white flex justify-between items-center">
         <div>
-          <h1 className="text-2xl font-bold">Caja rápida</h1>
-          <p className="text-sm text-gray-600">
+          <h1 className="text-xl sm:text-2xl font-bold">Caja rápida</h1>
+          <p className="text-xs sm:text-sm text-gray-600">
             Escribí producto y precio, como una caja registradora.
           </p>
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+      <main className="max-w-5xl mx-auto px-2 sm:px-4 py-3 flex flex-col md:flex-row gap-4">
         {/* Alta de ítem */}
-        <section className="md:w-1/3 p-4 border-r bg-white flex flex-col gap-3">
-          <h2 className="text-lg font-semibold">Agregar ítem</h2>
+        <section className="md:w-1/3 bg-white border rounded shadow-sm p-3 flex flex-col gap-3">
+          <h2 className="text-base sm:text-lg font-semibold">Agregar ítem</h2>
+
           <div>
             <label className="block text-xs mb-1">Descripción</label>
             <input
               value={descripcion}
               onChange={(e) => setDescripcion(e.target.value)}
-              className="border px-2 py-1 w-full rounded"
+              className="border px-2 py-2 w-full rounded text-sm"
               placeholder="Ej: Azúcar Ledesma 1kg"
             />
           </div>
-          <div className="flex gap-3">
+
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1">
               <label className="block text-xs mb-1">Precio</label>
               <input
                 type="number"
                 value={precio}
                 onChange={(e) => setPrecio(e.target.value)}
-                className="border px-2 py-1 w-full rounded"
+                className="border px-2 py-2 w-full rounded text-sm"
                 placeholder="0"
               />
             </div>
-            <div className="w-24">
+            <div className="sm:w-24">
               <label className="block text-xs mb-1">Cantidad</label>
               <input
                 type="number"
                 value={cantidad}
                 onChange={(e) => setCantidad(e.target.value)}
-                className="border px-2 py-1 w-full rounded"
+                className="border px-2 py-2 w-full rounded text-sm"
                 placeholder="1"
                 min={1}
               />
             </div>
           </div>
+
           <button
             onClick={agregarItem}
-            className="mt-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+            className="mt-1 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded text-sm"
           >
             Agregar al carrito
           </button>
           <button
             onClick={vaciarCaja}
-            className="mt-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded text-xs self-start"
+            className="mt-2 bg-gray-600 hover:bg-gray-700 text-white px-3 py-2 rounded text-xs self-start"
           >
             Reset caja
           </button>
         </section>
 
         {/* Carrito */}
-        <section className="md:w-2/3 p-4 flex flex-col bg-slate-50">
-          <h2 className="text-lg font-semibold mb-2">Carrito</h2>
+        <section className="md:w-2/3 bg-slate-50 rounded flex flex-col">
+          <div className="p-3">
+            <h2 className="text-base sm:text-lg font-semibold mb-2">
+              Carrito
+            </h2>
 
-          {carrito.length === 0 ? (
-            <p className="text-sm text-gray-600">
-              No hay ítems agregados. Cargá uno desde la izquierda.
-            </p>
-          ) : (
-            <div className="flex-1 overflow-y-auto border rounded bg-white shadow-sm mb-3">
-              <table className="w-full text-xs">
-                <thead className="bg-slate-100">
-                  <tr>
-                    <th className="border px-2 py-1 text-left">
-                      Descripción
-                    </th>
-                    <th className="border px-2 py-1 text-center">Cant.</th>
-                    <th className="border px-2 py-1 text-right">Precio</th>
-                    <th className="border px-2 py-1 text-right">Subt.</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {carrito.map((item) => {
-                    const subt =
-                      safeNumber(item.cantidad) *
-                      safeNumber(item.precioUnitario);
-                    return (
-                      <tr key={item.id}>
-                        <td className="border px-2 py-1">
-                          {item.descripcion}
-                        </td>
-                        <td className="border px-2 py-1 text-center">
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              type="button"
-                              onClick={() =>
-                                decrementarCantidad(item.id)
-                              }
-                              className="px-2 py-1 border rounded"
-                            >
-                              -
-                            </button>
-                            <input
-                              type="number"
-                              min={1}
-                              value={item.cantidad}
-                              onChange={(e) =>
-                                cambiarCantidadItem(
-                                  item.id,
-                                  Number(e.target.value)
-                                )
-                              }
-                              className="w-14 border px-1 text-center"
-                            />
-                            <button
-                              type="button"
-                              onClick={() =>
-                                incrementarCantidad(item.id)
-                              }
-                              className="px-2 py-1 border rounded"
-                            >
-                              +
-                            </button>
-                          </div>
-                        </td>
-                        <td className="border px-2 py-1 text-right">
-                          <input
-                            type="number"
-                            min={0}
-                            value={item.precioUnitario}
-                            onChange={(e) =>
-                              cambiarPrecioItem(item.id, e.target.value)
-                            }
-                            className="w-20 border px-1 text-right"
-                          />
-                        </td>
-                        <td className="border px-2 py-1 text-right">
-                          {formatCurrency(subt)}
-                        </td>
+            {carrito.length === 0 ? (
+              <p className="text-sm text-gray-600">
+                No hay ítems agregados. Cargá uno desde la izquierda.
+              </p>
+            ) : (
+              <div className="flex-1 border rounded bg-white shadow-sm mb-3 max-h-80 overflow-y-auto">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs sm:text-sm">
+                    <thead className="bg-slate-100">
+                      <tr>
+                        <th className="border px-2 py-1 text-left">
+                          Descripción
+                        </th>
+                        <th className="border px-2 py-1 text-center">
+                          Cant.
+                        </th>
+                        <th className="border px-2 py-1 text-right">
+                          Precio
+                        </th>
+                        <th className="border px-2 py-1 text-right">
+                          Subt.
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
+                    </thead>
+                    <tbody>
+                      {carrito.map((item) => {
+                        const subt =
+                          safeNumber(item.cantidad) *
+                          safeNumber(item.precioUnitario);
+                        return (
+                          <tr key={item.id}>
+                            <td className="border px-2 py-1">
+                              {item.descripcion}
+                            </td>
+                            <td className="border px-2 py-1 text-center">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    decrementarCantidad(item.id)
+                                  }
+                                  className="px-2 py-1 border rounded"
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  value={item.cantidad}
+                                  onChange={(e) =>
+                                    cambiarCantidadItem(
+                                      item.id,
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                  className="w-14 border px-1 text-center"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    incrementarCantidad(item.id)
+                                  }
+                                  className="px-2 py-1 border rounded"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </td>
+                            <td className="border px-2 py-1 text-right">
+                              <input
+                                type="number"
+                                min={0}
+                                value={item.precioUnitario}
+                                onChange={(e) =>
+                                  cambiarPrecioItem(
+                                    item.id,
+                                    e.target.value
+                                  )
+                                }
+                                className="w-20 border px-1 text-right"
+                              />
+                            </td>
+                            <td className="border px-2 py-1 text-right">
+                              {formatCurrency(subt)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+          </div>
 
           {/* Datos venta + WhatsApp */}
-          <div className="mt-auto border-t pt-3 space-y-2 bg-white rounded shadow-sm p-3">
+          <div className="mt-auto border-t bg-white rounded-t p-3 space-y-3 shadow-sm">
             <div>
               <label className="block text-xs mb-1">Cliente</label>
               <input
                 value={cliente}
                 onChange={(e) => setCliente(e.target.value)}
-                className="border px-2 py-1 w-full rounded"
+                className="border px-2 py-2 w-full rounded text-sm"
               />
             </div>
+
             <div>
               <label className="block text-xs mb-1">
                 Método de pago
@@ -362,7 +380,7 @@ export default function CajaRapida() {
               <select
                 value={metodoPago}
                 onChange={(e) => setMetodoPago(e.target.value)}
-                className="border px-2 py-1 w-full rounded"
+                className="border px-2 py-2 w-full rounded text-sm"
               >
                 <option value="efectivo">Efectivo</option>
                 <option value="transferencia">Transferencia</option>
@@ -371,7 +389,6 @@ export default function CajaRapida() {
               </select>
             </div>
 
-            {/* WhatsApp */}
             <div>
               <label className="block text-xs mb-1">
                 Número WhatsApp (con código de país, solo dígitos)
@@ -379,7 +396,7 @@ export default function CajaRapida() {
               <input
                 value={whatsapp}
                 onChange={(e) => setWhatsapp(e.target.value)}
-                className="border px-2 py-1 w-full rounded"
+                className="border px-2 py-2 w-full rounded text-sm"
                 placeholder="5492991234567"
               />
               <button
@@ -397,7 +414,7 @@ export default function CajaRapida() {
             <button
               onClick={confirmarVenta}
               disabled={carrito.length === 0}
-                           className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded disabled:opacity-50 sticky bottom-0 z-10 md:relative"
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded disabled:opacity-50 shadow-lg"
             >
               Confirmar venta
             </button>
@@ -407,4 +424,3 @@ export default function CajaRapida() {
     </div>
   );
 }
-
