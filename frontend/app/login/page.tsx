@@ -30,6 +30,7 @@ export default function Login() {
           throw new Error("Nombre obligatorio");
         }
 
+        // REGISTRO: body JSON
         res = await api("/auth/registrar", {
           method: "POST",
           body: JSON.stringify({
@@ -39,12 +40,14 @@ export default function Login() {
           }),
         });
       } else {
-        res = await api("/auth/login", {
+        // LOGIN: QUERY PARAMS (lo que tu backend espera)
+        const params = new URLSearchParams({
+          email: cleanEmail,
+          password: cleanPassword,
+        });
+
+        res = await api(`/auth/login?${params.toString()}`, {
           method: "POST",
-          body: JSON.stringify({
-            email: cleanEmail,
-            password: cleanPassword,
-          }),
         });
       }
 
