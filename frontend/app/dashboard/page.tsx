@@ -180,7 +180,7 @@ export default function DashboardPage() {
               <h2 className="font-bold mb-4">Métodos de pago</h2>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Object.entries(data.por_metodo).map(([m, v]) => (
+                {Object.entries(data?.por_metodo ?? {}).map(([m, v]) => (
                   <div key={m} className="bg-gray-50 p-3 rounded-lg border">
                     <p className="text-xs uppercase">{m}</p>
                     <p className="font-bold">{formatearMoneda(v)}</p>
