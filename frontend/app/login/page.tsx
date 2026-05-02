@@ -20,25 +20,37 @@ export default function Login() {
     setError("");
 
     try {
+      // 🔥 normalización CLAVE
+      const cleanEmail = email.trim().toLowerCase();
+      const cleanPassword = password.trim();
+
       let res;
 
       if (esRegistro) {
+        if (!nombre.trim()) {
+          throw new Error("Nombre obligatorio");
+        }
+
         res = await api("/auth/registrar", {
           method: "POST",
           body: JSON.stringify({
-            email,
-            nombre,
-            password,
+            email: cleanEmail,
+            nombre: nombre.trim(),
+            password: cleanPassword,
           }),
         });
       } else {
         res = await api("/auth/login", {
           method: "POST",
           body: JSON.stringify({
-            email,
-            password,
+            email: cleanEmail,
+            password: cleanPassword,
           }),
         });
+      }
+
+      if (!res?.token) {
+        throw new Error("No se recibió token");
       }
 
       localStorage.setItem("token", res.token);
@@ -46,7 +58,7 @@ export default function Login() {
 
       router.replace("/");
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message || "Error en login");
     } finally {
       setLoading(false);
     }
@@ -54,8 +66,10 @@ export default function Login() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
-      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow w-96 space-y-3">
-
+      <form
+        onSubmit={handleSubmit}
+        className="bg-white p-6 rounded-xl shadow w-96 space-y-3"
+      >
         <h1 className="text-xl font-bold text-center">
           {esRegistro ? "Registro" : "Login"}
         </h1>
@@ -84,7 +98,9 @@ export default function Login() {
           onChange={(e) => setPassword(e.target.value)}
         />
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && (
+          <p className="text-red-500 text-sm">{error}</p>
+        )}
 
         <button
           disabled={loading}
@@ -100,7 +116,6 @@ export default function Login() {
         >
           Cambiar a {esRegistro ? "Login" : "Registro"}
         </button>
-
       </form>
     </div>
   );
