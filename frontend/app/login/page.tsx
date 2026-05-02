@@ -11,36 +11,24 @@ export default function Login() {
   const [nombre, setNombre] = useState("");
   const [password, setPassword] = useState("");
   const [esRegistro, setEsRegistro] = useState(false);
-  const [cargando, setCargando] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
-  const manejarSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setCargando(true);
+    setLoading(true);
     setError("");
 
     try {
-      if (!email || !password) {
-        throw new Error("Email y password son obligatorios");
-      }
-
-      if (password.length > 72) {
-        throw new Error("La contraseña no puede tener más de 72 caracteres");
-      }
-
-      let res: any;
+      let res;
 
       if (esRegistro) {
-        if (!nombre) {
-          throw new Error("El nombre es obligatorio");
-        }
-
         res = await api("/auth/registrar", {
           method: "POST",
           body: JSON.stringify({
             email,
             nombre,
-            password: password.trim(),
+            password,
           }),
         });
       } else {
@@ -48,103 +36,72 @@ export default function Login() {
           method: "POST",
           body: JSON.stringify({
             email,
-            password: password.trim(),
+            password,
           }),
         });
       }
 
-      const { token, nombre: nombreUser } = res;
-
-      if (!token) {
-        throw new Error("No se recibió token del servidor");
-      }
-
-      localStorage.setItem("token", token);
-      localStorage.setItem("usuario_email", email);
-      localStorage.setItem("usuario_nombre", nombreUser || nombre);
+      localStorage.setItem("token", res.token);
+      localStorage.setItem("usuario_nombre", res.nombre || "");
 
       router.replace("/");
     } catch (err: any) {
-      setError(
-        err.message ||
-          err.response?.data?.detail ||
-          "Error en login"
-      );
+      setError(err.message);
     } finally {
-      setCargando(false);
+      setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
-      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
-        <h1 className="text-2xl font-bold text-center mb-4">
-          {esRegistro ? "Crear cuenta" : "Iniciar sesión"}
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <form onSubmit={handleSubmit} className="bg-white p-6 rounded-xl shadow w-96 space-y-3">
+
+        <h1 className="text-xl font-bold text-center">
+          {esRegistro ? "Registro" : "Login"}
         </h1>
 
-        <form onSubmit={manejarSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-1">Email</label>
-            <input
-              type="email"
-              placeholder="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        <input
+          className="w-full border p-2 rounded"
+          placeholder="Email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
-          {esRegistro && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Nombre</label>
-              <input
-                type="text"
-                placeholder="nombre"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
-                required
-                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          )}
+        {esRegistro && (
+          <input
+            className="w-full border p-2 rounded"
+            placeholder="Nombre"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+          />
+        )}
 
-          <div>
-            <label className="block text-sm font-medium mb-1">Contraseña</label>
-            <input
-              type="password"
-              placeholder="password (máx 72 caracteres)"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              maxLength={72}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
+        <input
+          type="password"
+          className="w-full border p-2 rounded"
+          placeholder="Password"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
 
-          {error && (
-            <p className="text-red-600 text-sm">
-              {error}
-            </p>
-          )}
+        {error && <p className="text-red-500 text-sm">{error}</p>}
 
-          <button
-            type="submit"
-            disabled={cargando}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg disabled:opacity-50"
-          >
-            {cargando ? "Cargando..." : esRegistro ? "Registrarse" : "Entrar"}
-          </button>
+        <button
+          disabled={loading}
+          className="w-full bg-blue-600 text-white p-2 rounded"
+        >
+          {loading ? "Cargando..." : esRegistro ? "Crear cuenta" : "Entrar"}
+        </button>
 
-          <button
-            type="button"
-            onClick={() => setEsRegistro(!esRegistro)}
-            className="w-full text-sm text-blue-600 mt-2"
-          >
-            {esRegistro ? "Ir a login" : "Crear cuenta"}
-          </button>
-        </form>
-      </div>
+        <button
+          type="button"
+          onClick={() => setEsRegistro(!esRegistro)}
+          className="text-sm text-blue-600 w-full"
+        >
+          Cambiar a {esRegistro ? "Login" : "Registro"}
+        </button>
+
+      </form>
     </div>
   );
 }

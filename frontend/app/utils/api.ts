@@ -1,8 +1,11 @@
 // utils/api.ts
-export const API_URL = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+
+export const API_URL =
+  "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
 
 export async function api(path: string, options: RequestInit = {}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token =
+    typeof window !== "undefined" ? localStorage.getItem("token") : null;
 
   const headers: HeadersInit = {
     "Content-Type": "application/json",
@@ -15,10 +18,18 @@ export async function api(path: string, options: RequestInit = {}) {
     headers,
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(text || `Error ${res.status}`);
+  let data: any;
+
+  try {
+    data = await res.json();
+  } catch {
+    data = null;
   }
 
-  return res.json();
+  if (!res.ok) {
+    const message = data?.detail || `Error ${res.status}`;
+    throw new Error(message);
+  }
+
+  return data;
 }

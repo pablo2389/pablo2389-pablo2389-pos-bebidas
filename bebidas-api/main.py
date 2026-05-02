@@ -19,9 +19,6 @@ SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 
-if not SUPABASE_URL or not SUPABASE_KEY:
-    raise Exception("Faltan variables .env")
-
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 app = FastAPI()
@@ -33,7 +30,6 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "http://localhost:3000",
-        "https://kiosco-grace.vercel.app",
         "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
     ],
     allow_credentials=True,
@@ -66,98 +62,86 @@ def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
 # =====================
 # MODELOS
 # =====================
-class Producto(BaseModel):
+class Login(BaseModel):
+    email: str
+    password: str
+
+class UsuarioCreate(BaseModel):
+    email: str
     nombre: str
-    precio: float
-    stock: int = 0
-
-
-class PedidoItem(BaseModel):
-    producto_id: int
-    cantidad: int
-
-
-class PedidoCreate(BaseModel):
-    cliente: str
-    metodo_pago: str
-    items: List[PedidoItem]
+    password: str
 
 # =====================
-# ROOT
+# LOGIN (FIX REAL)
 # =====================
-@app.get("/")
-def root():
-    return {"status": "ok"}
+@app.post("/auth/login")
+def login(data: Login):
 
-# =====================
-# CAJA ESTADO (ON/OFF SYSTEM)
-# =====================
-
-@app.get("/caja/estado")
-def obtener_estado_caja(token=Depends(verificar_token)):
-
-    kiosco_id = token["kiosco_id"]
-
-    res = supabase.table("caja_estado") \
+    res = supabase.table("usuarios") \
         .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .order("updated_at", desc=True) \
-        .limit(1) \
+        .eq("email", data.email) \
         .execute()
 
     if not res.data:
-        return {"estado": "closed"}
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    return res.data[0]
+    user = res.data[0]
 
+    if user["password"] != data.password:
+        raise HTTPException(status_code=401, detail="Password incorrecto")
 
-@app.post("/caja/toggle")
-def toggle_caja(token=Depends(verificar_token)):
+    token = crear_token(
+        user["id"],
+        user["email"],
+        user["rol"],
+        user["kiosco_id"]
+    )
 
-    kiosco_id = token["kiosco_id"]
-    user_id = token["user_id"]
+    return {
+        "token": token,
+        "nombre": user["nombre"]
+    }
 
-    res = supabase.table("caja_estado") \
-        .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .order("updated_at", desc=True) \
-        .limit(1) \
+# =====================
+# REGISTRO
+# =====================
+@app.post("/auth/registrar")
+def registrar(usuario: UsuarioCreate):
+
+    existe = supabase.table("usuarios") \
+        .select("id") \
+        .eq("email", usuario.email) \
         .execute()
 
-    estado_actual = "closed"
+    if existe.data:
+        raise HTTPException(status_code=400, detail="Usuario ya existe")
 
-    if res.data:
-        estado_actual = res.data[0]["estado"]
+    kiosco_id = str(uuid.uuid4())
 
-    nuevo_estado = "open" if estado_actual == "closed" else "closed"
-
-    supabase.table("caja_estado").insert({
-        "kiosco_id": kiosco_id,
-        "usuario_id": user_id,
-        "estado": nuevo_estado,
-        "updated_at": datetime.utcnow().isoformat()
+    supabase.table("kioscos").insert({
+        "id": kiosco_id,
+        "nombre": f"Kiosco de {usuario.nombre}"
     }).execute()
 
-    return {"estado": nuevo_estado}
+    res = supabase.table("usuarios").insert({
+        "email": usuario.email,
+        "nombre": usuario.nombre,
+        "password": usuario.password,
+        "rol": "admin",
+        "kiosco_id": kiosco_id
+    }).execute()
+
+    user = res.data[0]
+
+    token = crear_token(user["id"], user["email"], "admin", kiosco_id)
+
+    return {
+        "token": token,
+        "nombre": user["nombre"]
+    }
 
 # =====================
-# PRODUCTOS BAJO STOCK
-# =====================
-@app.get("/dashboard/productos-bajo-stock")
-def productos_bajo_stock(token=Depends(verificar_token)):
-
-    kiosco_id = token["kiosco_id"]
-
-    res = supabase.table("productos") \
-        .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .lt("stock", 5) \
-        .execute()
-
-    return res.data or []
-
-# =====================
-# CAJA HOY
+# CAJA HOY (FIX SAFE)
 # =====================
 @app.get("/dashboard/caja-hoy")
 def caja_hoy(token=Depends(verificar_token)):
@@ -191,108 +175,17 @@ def caja_hoy(token=Depends(verificar_token)):
     }
 
 # =====================
-# CLIENTES
+# STOCK (SAFE RETURN)
 # =====================
-@app.get("/clientes/lista")
-def clientes_lista(token=Depends(verificar_token)):
+@app.get("/dashboard/productos-bajo-stock")
+def productos_bajo_stock(token=Depends(verificar_token)):
 
     kiosco_id = token["kiosco_id"]
 
-    res = supabase.table("clientes") \
+    res = supabase.table("productos") \
         .select("*") \
         .eq("kiosco_id", kiosco_id) \
+        .lt("stock", 5) \
         .execute()
 
     return res.data or []
-
-# =====================
-# PRODUCTOS
-# =====================
-@app.get("/productos")
-def get_productos(token=Depends(verificar_token)):
-
-    kiosco_id = token["kiosco_id"]
-
-    return supabase.table("productos") \
-        .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .execute().data
-
-
-@app.post("/productos")
-def crear_producto(prod: Producto, token=Depends(verificar_token)):
-
-    kiosco_id = token["kiosco_id"]
-
-    return supabase.table("productos").insert({
-        "nombre": prod.nombre,
-        "precio": prod.precio,
-        "stock": prod.stock,
-        "kiosco_id": kiosco_id
-    }).execute().data
-
-# =====================
-# PEDIDOS (CON BLOQUEO DE CAJA)
-# =====================
-@app.post("/pedidos")
-def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
-
-    kiosco_id = token["kiosco_id"]
-
-    # 🔒 VALIDAR CAJA ABIERTA
-    caja = supabase.table("caja_estado") \
-        .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .order("updated_at", desc=True) \
-        .limit(1) \
-        .execute()
-
-    estado = "closed"
-    if caja.data:
-        estado = caja.data[0]["estado"]
-
-    if estado != "open":
-        raise HTTPException(403, "La caja está cerrada")
-
-    # CREAR PEDIDO
-    pedido_res = supabase.table("pedidos").insert({
-        "cliente": pedido.cliente,
-        "metodo_pago": pedido.metodo_pago,
-        "kiosco_id": kiosco_id,
-        "created_at": datetime.utcnow().isoformat()
-    }).execute()
-
-    pedido_id = pedido_res.data[0]["id"]
-
-    total = 0
-
-    for item in pedido.items:
-
-        prod = supabase.table("productos") \
-            .select("*") \
-            .eq("id", item.producto_id) \
-            .execute().data[0]
-
-        subtotal = prod["precio"] * item.cantidad
-        total += subtotal
-
-        supabase.table("pedido_items").insert({
-            "pedido_id": pedido_id,
-            "producto_id": item.producto_id,
-            "cantidad": item.cantidad,
-            "precio_unitario": prod["precio"],
-            "kiosco_id": kiosco_id
-        }).execute()
-
-        supabase.table("productos").update({
-            "stock": prod["stock"] - item.cantidad
-        }).eq("id", item.producto_id).execute()
-
-    supabase.table("pedidos").update({
-        "total": total
-    }).eq("id", pedido_id).execute()
-
-    return {
-        "total": total,
-        "pedido_id": pedido_id
-    }
