@@ -8,8 +8,7 @@ from dotenv import load_dotenv
 import jwt
 import uuid
 from pydantic import BaseModel
-from typing import List, Dict, Any
-from collections import defaultdict
+from typing import List
 
 # =====================
 # ENV
@@ -18,30 +17,25 @@ load_dotenv()
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret-key-change-in-prod")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Faltan variables .env")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# =====================
-# APP
-# =====================
 app = FastAPI()
 
 # =====================
 # CORS
 # =====================
-origins = [
-    "http://localhost:3000",
-    "https://kiosco-grace.vercel.app",
-    "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
-]
-
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
+    allow_origins=[
+        "http://localhost:3000",
+        "https://kiosco-grace.vercel.app",
+        "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,12 +46,6 @@ app.add_middleware(
 # =====================
 security = HTTPBearer()
 
-def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
-    try:
-        return jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
-    except:
-        raise HTTPException(status_code=401, detail="Token inválido")
-
 def crear_token(user_id, email, rol, kiosco_id):
     payload = {
         "user_id": user_id,
@@ -67,6 +55,13 @@ def crear_token(user_id, email, rol, kiosco_id):
         "exp": datetime.utcnow() + timedelta(days=30),
     }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
+
+def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        return jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
+    except:
+        raise HTTPException(status_code=401, detail="Token inválido")
 
 # =====================
 # MODELOS
@@ -108,19 +103,16 @@ def root():
 def registrar(usuario: UsuarioCreate):
 
     existe = supabase.table("usuarios").select("id").eq("email", usuario.email).execute()
-
     if existe.data:
         raise HTTPException(400, "Usuario ya existe")
 
     kiosco_id = str(uuid.uuid4())
 
-    # crear kiosco
     supabase.table("kioscos").insert({
         "id": kiosco_id,
         "nombre": f"Kiosco de {usuario.nombre}"
     }).execute()
 
-    # crear admin
     res = supabase.table("usuarios").insert({
         "email": usuario.email,
         "nombre": usuario.nombre,
@@ -133,7 +125,7 @@ def registrar(usuario: UsuarioCreate):
 
     token = crear_token(user["id"], usuario.email, "admin", kiosco_id)
 
-    return {"token": token, "nombre": usuario.nombre, "rol": "admin"}
+    return {"token": token}
 
 
 @app.post("/auth/login")
@@ -147,7 +139,7 @@ def login(data: Login):
     user = res.data[0]
 
     if user["password"] != data.password:
-        raise HTTPException(401, "Contraseña incorrecta")
+        raise HTTPException(401, "Password incorrecto")
 
     token = crear_token(
         user["id"],
@@ -156,46 +148,27 @@ def login(data: Login):
         user["kiosco_id"]
     )
 
-    return {"token": token, "nombre": user["nombre"], "rol": user["rol"]}
-
-
-# =====================
-# CREAR EMPLEADO
-# =====================
-@app.post("/auth/invitar")
-def crear_empleado(data: UsuarioCreate, token=Depends(verificar_token)):
-
-    kiosco_id = token.get("kiosco_id")
-
-    supabase.table("usuarios").insert({
-        "email": data.email,
-        "nombre": data.nombre,
-        "password": data.password,
-        "rol": "vendedor",
-        "kiosco_id": kiosco_id
-    }).execute()
-
-    return {"msg": "Empleado creado"}
+    return {"token": token}
 
 
 # =====================
 # PRODUCTOS
 # =====================
 @app.get("/productos")
-def productos(token=Depends(verificar_token)):
+def get_productos(token=Depends(verificar_token)):
 
-    kiosco_id = token.get("kiosco_id")
+    kiosco_id = token["kiosco_id"]
 
-    return supabase.table("productos")\
-        .select("*")\
-        .eq("kiosco_id", kiosco_id)\
+    return supabase.table("productos") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
         .execute().data
 
 
 @app.post("/productos")
 def crear_producto(prod: Producto, token=Depends(verificar_token)):
 
-    kiosco_id = token.get("kiosco_id")
+    kiosco_id = token["kiosco_id"]
 
     return supabase.table("productos").insert({
         "nombre": prod.nombre,
@@ -206,17 +179,18 @@ def crear_producto(prod: Producto, token=Depends(verificar_token)):
 
 
 # =====================
-# PEDIDOS
+# PEDIDOS + STOCK
 # =====================
 @app.post("/pedidos")
 def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
 
-    kiosco_id = token.get("kiosco_id")
+    kiosco_id = token["kiosco_id"]
 
     pedido_res = supabase.table("pedidos").insert({
         "cliente": pedido.cliente,
         "metodo_pago": pedido.metodo_pago,
-        "kiosco_id": kiosco_id
+        "kiosco_id": kiosco_id,
+        "created_at": datetime.utcnow().isoformat()
     }).execute()
 
     pedido_id = pedido_res.data[0]["id"]
@@ -224,9 +198,10 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     total = 0
 
     for item in pedido.items:
-        prod = supabase.table("productos")\
-            .select("*")\
-            .eq("id", item.producto_id)\
+
+        prod = supabase.table("productos") \
+            .select("*") \
+            .eq("id", item.producto_id) \
             .execute().data[0]
 
         subtotal = prod["precio"] * item.cantidad
@@ -240,8 +215,41 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
             "kiosco_id": kiosco_id
         }).execute()
 
+        # descontar stock
+        supabase.table("productos").update({
+            "stock": prod["stock"] - item.cantidad
+        }).eq("id", item.producto_id).execute()
+
     supabase.table("pedidos").update({
         "total": total
     }).eq("id", pedido_id).execute()
 
-    return {"total": total}
+    return {"total": total, "pedido_id": pedido_id}
+
+
+# =====================
+# CAJA DEL DÍA (FIX ERROR DASHBOARD)
+# =====================
+@app.get("/caja/hoy")
+def caja_hoy(token=Depends(verificar_token)):
+
+    kiosco_id = token["kiosco_id"]
+
+    hoy = datetime.now().date()
+
+    res = supabase.table("pedidos") \
+        .select("total") \
+        .eq("kiosco_id", kiosco_id) \
+        .gte("created_at", f"{hoy}T00:00:00") \
+        .lte("created_at", f"{hoy}T23:59:59") \
+        .execute()
+
+    pedidos = res.data or []
+
+    total = sum(p["total"] for p in pedidos if p["total"])
+
+    return {
+        "total": total,
+        "cantidad_ventas": len(pedidos),
+        "fecha": str(hoy)
+    }
