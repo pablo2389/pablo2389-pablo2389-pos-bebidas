@@ -197,7 +197,7 @@ export default function CajaRapida() {
   // =====================
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-slate-100 overflow-x-hidden">
       <header className="px-4 sm:px-6 py-3 border-b bg-white flex justify-between items-center">
         <div>
           <h1 className="text-xl sm:text-2xl font-bold">Caja rápida</h1>
@@ -414,7 +414,7 @@ export default function CajaRapida() {
             <button
               onClick={confirmarVenta}
               disabled={carrito.length === 0}
-              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded disabled:opacity-50 sticky bottom-0 z-50 shadow-lg md:relative"
+              className="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded disabled:opacity-50 shadow-lg"
             >
               Confirmar venta
             </button>
