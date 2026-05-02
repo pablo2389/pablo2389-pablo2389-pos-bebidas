@@ -1,465 +1,127 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
-type ItemCarrito = {
-  id: number;
+type Item = {
   descripcion: string;
+  precio: number;
   cantidad: number;
-  precioUnitario: number;
 };
 
-type Vista = "carga" | "carrito";
-
-export default function CajaRapida() {
-  const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
+export default function POSPage() {
   const [descripcion, setDescripcion] = useState("");
-  const [precio, setPrecio] = useState<string>("");
-  const [cantidad, setCantidad] = useState<string>("1");
-  const [cliente, setCliente] = useState("");
-  const [metodoPago, setMetodoPago] = useState("efectivo");
-  const [ultimoId, setUltimoId] = useState(1);
-  const [whatsapp, setWhatsapp] = useState("");
-  const [vista, setVista] = useState<Vista>("carga"); // móvil: carga | carrito
-
-  const safeNumber = (v: unknown): number => {
-    const n = Number(v);
-    return isNaN(n) ? 0 : n;
-  };
-
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("es-AR", {
-      style: "currency",
-      currency: "ARS",
-      minimumFractionDigits: 2,
-    }).format(value);
-
-  const total = useMemo(
-    () =>
-      carrito.reduce(
-        (acc, item) =>
-          acc + safeNumber(item.precioUnitario) * safeNumber(item.cantidad),
-        0
-      ),
-    [carrito]
-  );
+  const [precio, setPrecio] = useState(0);
+  const [cantidad, setCantidad] = useState(1);
+  const [carrito, setCarrito] = useState<Item[]>([]);
 
   const agregarItem = () => {
-    const desc = descripcion.trim();
-    const p = safeNumber(precio);
-    const c = safeNumber(cantidad);
+    if (!descripcion || precio <= 0) return;
 
-    if (!desc) {
-      alert("Escribí la descripción del producto");
-      return;
-    }
-    if (p <= 0) {
-      alert("El precio debe ser mayor a 0");
-      return;
-    }
-    if (c <= 0) {
-      alert("La cantidad debe ser mayor a 0");
-      return;
-    }
+    setCarrito([
+      ...carrito,
+      { descripcion, precio, cantidad }
+    ]);
 
-    const nuevo: ItemCarrito = {
-      id: ultimoId,
-      descripcion: desc,
-      cantidad: c,
-      precioUnitario: p,
-    };
-
-    setCarrito((prev) => [...prev, nuevo]);
-    setUltimoId((id) => id + 1);
     setDescripcion("");
-    setPrecio("");
-    setCantidad("1");
+    setPrecio(0);
+    setCantidad(1);
   };
 
-  const incrementarCantidad = (id: number) => {
-    setCarrito((prev) =>
-      prev.map((i) =>
-        i.id === id ? { ...i, cantidad: i.cantidad + 1 } : i
-      )
-    );
-  };
-
-  const decrementarCantidad = (id: number) => {
-    setCarrito((prev) =>
-      prev
-        .map((i) =>
-          i.id === id ? { ...i, cantidad: i.cantidad - 1 } : i
-        )
-        .filter((i) => i.cantidad > 0)
-    );
-  };
-
-  const vaciarCaja = () => {
-    if (!confirm("¿Resetear caja? Se borra todo el carrito.")) return;
-    setCarrito([]);
-    setCliente("");
-    setMetodoPago("efectivo");
-    setWhatsapp("");
-  };
-
-  const confirmarVenta = () => {
-    if (carrito.length === 0) {
-      alert("No hay ítems en la caja");
-      return;
-    }
-    if (!cliente.trim()) {
-      alert("Ingresá el cliente");
-      return;
-    }
-
-    const resumen = carrito
-      .map(
-        (i) =>
-          `${i.cantidad} x ${i.descripcion} @ ${formatCurrency(
-            i.precioUnitario
-          )} = ${formatCurrency(i.cantidad * i.precioUnitario)}`
-      )
-      .join("\n");
-
-    alert(
-      `Venta confirmada\nCliente: ${cliente}\nPago: ${metodoPago}\n\n${resumen}\n\nTOTAL: ${formatCurrency(
-        total
-      )}`
-    );
-
-    setCarrito([]);
-    setCliente("");
-  };
-
-  const enviarTicketWhatsApp = () => {
-    if (!whatsapp.trim()) {
-      alert("Ingresá un número de WhatsApp");
-      return;
-    }
-    if (carrito.length === 0) {
-      alert("No hay ítems en el carrito para enviar.");
-      return;
-    }
-
-    const phone = whatsapp.replace(/\D/g, "");
-
-    const detalle = carrito
-      .map(
-        (i) =>
-          `${i.cantidad} x ${i.descripcion} (${formatCurrency(
-            i.precioUnitario
-          )})`
-      )
-      .join("%0A");
-
-    const mensaje = encodeURIComponent(
-      `Hola, este es tu ticket:%0ACliente: ${
-        cliente || "-"
-      }%0A${detalle}%0ATotal: ${formatCurrency(total)}`
-    );
-
-    const url = `https://wa.me/${phone}?text=${mensaje}`;
-    window.open(url, "_blank");
-  };
+  const total = carrito.reduce(
+    (acc, item) => acc + item.precio * item.cantidad,
+    0
+  );
 
   return (
-    <div className="bg-slate-100 overflow-x-hidden min-h-screen">
-      {/* Header */}
-      <header className="px-3 py-2 md:px-4 md:py-4 border-b bg-white shadow-sm">
-        <div className="max-w-6xl mx-auto">
-          <h1 className="text-lg md:text-2xl font-bold text-slate-800">
-            Caja rápida
-          </h1>
-          <p className="text-xs md:text-sm text-gray-500">
-            Punto de venta optimizado para cualquier dispositivo.
-          </p>
-        </div>
-      </header>
+    <div className="min-h-screen bg-[#f5e6d3] p-4">
+      
+      {/* CONTENEDOR PRINCIPAL */}
+      <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-4 space-y-4">
 
-      <main className="max-w-6xl mx-auto px-2 py-2 pb-24 md:pb-6">
-        {/* Toggle de vistas solo en móvil */}
-        <div className="md:hidden flex justify-between items-center mb-2">
-          <button
-            onClick={() => setVista("carga")}
-            className={`flex-1 mr-1 text-xs py-2 rounded-lg border ${
-              vista === "carga"
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-slate-700"
-            }`}
-          >
-            Cargar productos
-          </button>
-          <button
-            onClick={() => setVista("carrito")}
-            className={`flex-1 ml-1 text-xs py-2 rounded-lg border ${
-              vista === "carrito"
-                ? "bg-blue-600 text-white border-blue-600"
-                : "bg-white text-slate-700"
-            }`}
-          >
-            Ver carrito ({carrito.length})
+        {/* HEADER */}
+        <div className="flex justify-between items-center">
+          <h1 className="text-lg font-bold">Speed Box</h1>
+          <button className="bg-gray-800 text-white px-3 py-1 rounded text-sm">
+            Dashboard
           </button>
         </div>
 
-        {/* Layout desktop: dos columnas, móvil: según vista */}
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2">
-          {/* Columna de carga */}
-          <div
-            className={`md:col-span-4 flex flex-col gap-3 ${
-              vista === "carga" ? "block" : "hidden md:block"
-            }`}
-          >
-            {/* Nuevo ítem */}
-            <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
-              <h2 className="text-sm md:text-lg font-semibold border-b pb-2">
-                Nuevo Ítem
-              </h2>
+        {/* FORM */}
+        <div className="space-y-2">
+          <h2 className="font-semibold">Agregar ítem</h2>
 
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
-                    Descripción
-                  </label>
-                  <input
-                    value={descripcion}
-                    onChange={(e) => setDescripcion(e.target.value)}
-                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="Ej: Coca 2.25L"
-                  />
-                </div>
+          <input
+            type="text"
+            placeholder="Descripción"
+            value={descripcion}
+            onChange={(e) => setDescripcion(e.target.value)}
+            className="w-full border rounded p-2 text-sm"
+          />
 
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
-                      Precio
-                    </label>
-                    <input
-                      type="number"
-                      inputMode="decimal"
-                      value={precio}
-                      onChange={(e) => setPrecio(e.target.value)}
-                      className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                      placeholder="0"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
-                      Cantidad
-                    </label>
-                    <input
-                      type="number"
-                      inputMode="numeric"
-                      value={cantidad}
-                      onChange={(e) => setCantidad(e.target.value)}
-                      className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all text-center"
-                      min={1}
-                    />
-                  </div>
-                </div>
-              </div>
+          {/* FILA RESPONSIVE */}
+          <div className="flex flex-col sm:flex-row gap-2">
+            <input
+              type="number"
+              placeholder="Precio"
+              value={precio}
+              onChange={(e) => setPrecio(Number(e.target.value))}
+              className="w-full border rounded p-2 text-sm"
+            />
 
-              <div className="flex gap-2 pt-1">
-                <button
-                  onClick={agregarItem}
-                  className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 md:py-2.5 rounded-md shadow-md text-xs md:text-sm transition-colors"
-                >
-                  Agregar
-                </button>
-                <button
-                  onClick={vaciarCaja}
-                  className="bg-slate-200 hover:bg-slate-300 text-slate-700 px-2.5 py-2 md:px-3 md:py-2.5 rounded-md text-[11px] md:text-xs font-medium transition-colors"
-                >
-                  Reset
-                </button>
-              </div>
-            </section>
-
-            {/* Finalizar */}
-            <section className="bg-white border rounded-xl shadow-sm p-3 flex flex-col gap-3">
-              <h2 className="text-sm md:text-lg font-semibold border-b pb-2">
-                Finalizar
-              </h2>
-
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
-                    Cliente
-                  </label>
-                  <input
-                    value={cliente}
-                    onChange={(e) => setCliente(e.target.value)}
-                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="Nombre del cliente"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
-                    Método de pago
-                  </label>
-                  <select
-                    value={metodoPago}
-                    onChange={(e) => setMetodoPago(e.target.value)}
-                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm bg-white focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                  >
-                    <option value="efectivo">Efectivo</option>
-                    <option value="transferencia">Transferencia</option>
-                    <option value="mp">MercadoPago</option>
-                    <option value="fiado">Fiado</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-xs md:text-sm font-medium mb-1 text-slate-700">
-                    WhatsApp
-                  </label>
-                  <input
-                    value={whatsapp}
-                    onChange={(e) => setWhatsapp(e.target.value)}
-                    className="border-slate-300 border px-2.5 py-1.5 w-full rounded-md text-xs md:text-sm focus:ring-2 focus:ring-blue-500 outline-none transition-all"
-                    placeholder="549..."
-                  />
-                </div>
-              </div>
-
-              <div className="pt-3 border-t">
-                <div className="flex justify-between items-center mb-3">
-                  <span className="text-slate-500 font-medium text-xs md:text-sm">
-                    TOTAL:
-                  </span>
-                  <span className="text-lg md:text-2xl font-black text-blue-600">
-                    {formatCurrency(total)}
-                  </span>
-                </div>
-
-                {/* Botones en desktop */}
-                <div className="hidden md:flex flex-col gap-2">
-                  <button
-                    onClick={confirmarVenta}
-                    disabled={carrito.length === 0}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2.5 rounded-xl disabled:opacity-50 shadow-lg transition-all transform active:scale-95 text-sm"
-                  >
-                    CONFIRMAR VENTA
-                  </button>
-                  <button
-                    onClick={enviarTicketWhatsApp}
-                    className="w-full bg-emerald-100 text-emerald-700 hover:bg-emerald-200 py-2.5 rounded-lg text-xs font-bold transition-all"
-                  >
-                    Enviar Ticket WhatsApp
-                  </button>
-                </div>
-              </div>
-            </section>
+            <input
+              type="number"
+              placeholder="Cantidad"
+              value={cantidad}
+              onChange={(e) => setCantidad(Number(e.target.value))}
+              className="w-full sm:w-24 border rounded p-2 text-sm"
+            />
           </div>
 
-          {/* Columna de carrito */}
-          <div
-            className={`md:col-span-8 ${
-              vista === "carrito" ? "block" : "hidden md:block"
-            }`}
+          <button
+            onClick={agregarItem}
+            className="w-full bg-blue-600 text-white py-2 rounded"
           >
-            <section className="bg-white border rounded-xl shadow-sm h-fit">
-              <div className="p-3 md:p-4 border-b bg-slate-50 flex justify-between items-center">
-                <h2 className="text-sm md:text-lg font-semibold text-slate-800">
-                  Carrito ({carrito.length})
-                </h2>
-                {carrito.length > 0 && (
-                  <span className="text-xs md:text-sm font-bold text-blue-600 md:hidden">
-                    {formatCurrency(total)}
-                  </span>
-                )}
-              </div>
+            Agregar al carrito
+          </button>
+        </div>
 
-              <div className="table-responsive-container">
-                {carrito.length === 0 ? (
-                  <div className="p-8 text-center text-gray-400">
-                    <p className="text-base md:text-lg">
-                      El carrito está vacío
-                    </p>
-                    <p className="text-xs md:text-sm">
-                      Agregá productos para empezar
+        {/* CARRITO */}
+        <div className="space-y-2">
+          <h2 className="font-semibold">Carrito</h2>
+
+          {carrito.length === 0 ? (
+            <p className="text-sm text-gray-500">
+              No hay ítems agregados
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {carrito.map((item, i) => (
+                <div
+                  key={i}
+                  className="border rounded p-2 text-sm flex justify-between"
+                >
+                  <div>
+                    <p className="font-medium">{item.descripcion}</p>
+                    <p className="text-gray-500">
+                      {item.cantidad} x ${item.precio}
                     </p>
                   </div>
-                ) : (
-                  <table className="text-xs md:text-sm">
-                    <thead className="bg-slate-100 text-slate-600 font-bold uppercase text-[10px] tracking-wider">
-                      <tr>
-                        <th className="px-4 py-3 text-left">Producto</th>
-                        <th className="px-4 py-3 text-center">Cant.</th>
-                        <th className="px-4 py-3 text-right">Unitario</th>
-                        <th className="px-4 py-3 text-right">Subtotal</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {carrito.map((item) => {
-                        const subt =
-                          safeNumber(item.cantidad) *
-                          safeNumber(item.precioUnitario);
-                        return (
-                          <tr
-                            key={item.id}
-                            className="hover:bg-slate-50 transition-colors"
-                          >
-                            <td className="px-4 py-3 font-medium text-slate-800">
-                              {item.descripcion}
-                            </td>
-                            <td className="px-4 py-3">
-                              <div className="flex items-center justify-center gap-2">
-                                <button
-                                  onClick={() => decrementarCantidad(item.id)}
-                                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-full bg-white hover:bg-red-50 hover:text-red-600 transition-all text-xs"
-                                >
-                                  -
-                                </button>
-                                <span className="w-8 text-center font-bold text-xs md:text-sm">
-                                  {item.cantidad}
-                                </span>
-                                <button
-                                  onClick={() => incrementarCantidad(item.id)}
-                                  className="w-7 h-7 md:w-8 md:h-8 flex items-center justify-center border rounded-full bg-white hover:bg-green-50 hover:text-green-600 transition-all text-xs"
-                                >
-                                  +
-                                </button>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-right">
-                              {formatCurrency(item.precioUnitario)}
-                            </td>
-                            <td className="px-4 py-3 text-right font-bold text-slate-900">
-                              {formatCurrency(subt)}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </section>
-          </div>
-        </div>
-      </main>
+                  <div className="font-bold">
+                    ${item.precio * item.cantidad}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
 
-      {/* Footer fijo solo móvil y solo en vista carrito */}
-      {vista === "carrito" && (
-        <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t px-3 py-3 z-50 shadow-[0_-4px_10px_rgba(0,0,0,0.05)]">
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={confirmarVenta}
-              disabled={carrito.length === 0}
-              className="w-full bg-green-600 text-white font-semibold py-3 rounded-lg shadow-md active:scale-95 transition-transform disabled:opacity-50 text-sm"
-            >
-              CONFIRMAR VENTA ({formatCurrency(total)})
-            </button>
-            <button
-              onClick={enviarTicketWhatsApp}
-              className="w-full bg-emerald-100 text-emerald-700 font-semibold py-2.5 rounded-lg text-xs"
-            >
-              Enviar WhatsApp
-            </button>
+          {/* TOTAL */}
+          <div className="flex justify-between font-bold border-t pt-2">
+            <span>Total</span>
+            <span>${total}</span>
           </div>
         </div>
-      )}
+
+      </div>
     </div>
   );
 }

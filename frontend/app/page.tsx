@@ -313,7 +313,7 @@ export default function CajaRapida() {
   // =====================
 
   return (
-    <div className="h-screen flex flex-col bg-slate-100">
+    <div className="min-h-screen bg-slate-100 overflow-x-hidden pb-8">
       <header className="px-6 py-3 border-b bg-white flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold">Speed Box</h1>
@@ -330,7 +330,7 @@ export default function CajaRapida() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col md:flex-row overflow-hidden">
+     <main className="flex-1 flex flex-col md:flex-row">
         {/* Alta de ítem */}
         <section className="md:w-1/3 p-4 border-r bg-white flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Agregar ítem</h2>
@@ -381,7 +381,7 @@ export default function CajaRapida() {
         </section>
 
         {/* Carrito */}
-        <section className="md:w-2/3 p-4 flex flex-col bg-slate-50">
+      <section className="md:w-2/3 p-3 flex flex-col bg-slate-50">
           <h2 className="text-lg font-semibold mb-2">Carrito</h2>
 
           {carrito.length === 0 ? (
@@ -468,7 +468,7 @@ export default function CajaRapida() {
           )}
 
           {/* Datos venta + WhatsApp + PDF */}
-          <div className="mt-auto border-t pt-3 space-y-2 bg-white rounded shadow-sm p-3">
+          <div className="mt-auto border-t pt-2 space-y-2 bg-white rounded shadow-sm p-2">
             <div>
               <label className="block text-xs mb-1">Cliente</label>
               <input

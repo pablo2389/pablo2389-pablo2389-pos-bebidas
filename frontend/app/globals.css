@@ -22,27 +22,26 @@
     font-family: Arial, Helvetica, sans-serif;
   }
 
-  /* ===== 1. MÓVIL (por defecto) ===== */
+  /* ===== 1. MOBILE FIRST ===== */
 
-  /* Inputs en móvil: un poco más chicos pero legibles */
   input,
   select,
   textarea {
-    font-size: 14px;      /* antes 16px */
-    min-height: 38px;     /* antes 44px */
-  }
-
-  /* Botones en móvil más compactos */
-  button {
-    font-size: 14px;      /* antes 16px */
-    min-height: 40px;     /* antes 44px */
-    padding: 8px 12px;    /* antes 12px 16px */
-  }
-
-  /* Tablas en móvil */
-  table {
-    font-size: 12px;
+    font-size: 14px;
+    min-height: 38px;
     width: 100%;
+  }
+
+  button {
+    font-size: 14px;
+    min-height: 40px;
+    padding: 8px 12px;
+    width: 100%;
+  }
+
+  table {
+    width: 100%;
+    font-size: 12px;
   }
 
   table input {
@@ -50,7 +49,14 @@
     min-height: 32px;
   }
 
-  /* ===== 2. TABLET (>=768px) ===== */
+  /* ===== 2. TABLET (>=640px) ===== */
+  @media (min-width: 640px) {
+    button {
+      width: auto;
+    }
+  }
+
+  /* ===== 3. TABLET GRANDE (>=768px) ===== */
   @media (min-width: 768px) {
     table {
       font-size: 14px;
@@ -61,7 +67,7 @@
     }
   }
 
-  /* ===== 3. DESKTOP (>=1024px) ===== */
+  /* ===== 4. DESKTOP (>=1024px) ===== */
   @media (min-width: 1024px) {
     input,
     select,
@@ -86,29 +92,25 @@
   }
 }
 
-@layer utilities {
-  /* Contenedor para tablas scrolleables en móvil */
-  .table-responsive-container {
-    @apply w-full overflow-x-auto block whitespace-nowrap;
-  }
-}
+/* ===== UTILIDADES ===== */
 
-/* Refuerzo para scroll suave en móvil */
-@media (max-width: 640px) {
+@layer utilities {
   .table-responsive-container {
-    overflow-x: auto;
+    @apply w-full overflow-x-auto block;
     -webkit-overflow-scrolling: touch;
   }
 }
 
-/* Aseguramos que la tabla no colapse en pantallas angostas */
-.table-responsive-container {
-  width: 100%;
-  overflow-x: auto;
-  -webkit-overflow-scrolling: touch;
-}
+/* ===== COMPORTAMIENTO RESPONSIVE DE TABLAS ===== */
 
+/* En MOBILE → NO forzamos ancho */
 table {
   width: 100%;
-  min-width: 500px; /* evita que la tabla se haga una columna ridícula */
+}
+
+/* En pantallas medianas/grandes recién permitimos ancho mínimo */
+@media (min-width: 640px) {
+  table {
+    min-width: 500px;
+  }
 }
