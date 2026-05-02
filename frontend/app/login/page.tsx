@@ -53,7 +53,6 @@ export default function Login() {
         });
       }
 
-      // con tu api.ts, res YA es el JSON parseado, no res.data
       const { token, nombre: nombreUser } = res;
 
       if (!token) {
@@ -77,52 +76,75 @@ export default function Login() {
   };
 
   return (
-    <div className="p-10">
-      <form onSubmit={manejarSubmit} className="space-y-4">
-        <input
-          type="email"
-          placeholder="email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          required
-        />
+    <div className="min-h-screen flex items-center justify-center bg-slate-100 px-4">
+      <div className="w-full max-w-md bg-white rounded-2xl shadow-lg p-6">
+        <h1 className="text-2xl font-bold text-center mb-4">
+          {esRegistro ? "Crear cuenta" : "Iniciar sesión"}
+        </h1>
 
-        {esRegistro && (
-          <input
-            type="text"
-            placeholder="nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-            required
-          />
-        )}
+        <form onSubmit={manejarSubmit} className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium mb-1">Email</label>
+            <input
+              type="email"
+              placeholder="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-        <input
-          type="password"
-          placeholder="password (máx 72 caracteres)"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-          maxLength={72}
-        />
+          {esRegistro && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Nombre</label>
+              <input
+                type="text"
+                placeholder="nombre"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+                className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+          )}
 
-        <button type="submit" disabled={cargando}>
-          {cargando ? "Cargando..." : esRegistro ? "Registrarse" : "Entrar"}
-        </button>
+          <div>
+            <label className="block text-sm font-medium mb-1">Contraseña</label>
+            <input
+              type="password"
+              placeholder="password (máx 72 caracteres)"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              maxLength={72}
+              className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
 
-        <button
-          type="button"
-          onClick={() => setEsRegistro(!esRegistro)}
-        >
-          {esRegistro ? "Ir a login" : "Crear cuenta"}
-        </button>
+          {error && (
+            <p className="text-red-600 text-sm">
+              {error}
+            </p>
+          )}
 
-        {error && (
-          <p style={{ color: "red", marginTop: "10px" }}>
-            {error}
-          </p>
-        )}
-      </form>
+          <button
+            type="submit"
+            disabled={cargando}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg disabled:opacity-50"
+          >
+            {cargando ? "Cargando..." : esRegistro ? "Registrarse" : "Entrar"}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setEsRegistro(!esRegistro)}
+            className="w-full text-sm text-blue-600 mt-2"
+          >
+            {esRegistro ? "Ir a login" : "Crear cuenta"}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }
