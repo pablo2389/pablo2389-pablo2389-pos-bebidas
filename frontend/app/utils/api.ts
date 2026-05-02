@@ -1,5 +1,3 @@
-// utils/api.ts
-
 export const API_URL =
   "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
 
@@ -27,7 +25,19 @@ export async function api(path: string, options: RequestInit = {}) {
   }
 
   if (!res.ok) {
-    const message = data?.detail || `Error ${res.status}`;
+    let message = `Error ${res.status}`;
+
+    if (data?.detail) {
+      if (typeof data.detail === "string") {
+        message = data.detail;
+      } else if (Array.isArray(data.detail)) {
+        // FastAPI ValidationError: array de errores
+        message = data.detail.map((e: any) => e.msg).join(", ");
+      } else if (typeof data.detail === "object") {
+        message = data.detail.msg || JSON.stringify(data.detail);
+      }
+    }
+
     throw new Error(message);
   }
 
