@@ -31,6 +31,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
+        "https://kiosco-grace.vercel.app",  # 👈 tu frontend en Vercel
     ],
     allow_credentials=True,
     allow_methods=["*"],
