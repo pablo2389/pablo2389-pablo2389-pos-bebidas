@@ -2,36 +2,40 @@
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import jsPDF from "jspdf";
+import "jspdf-autotable"; // Importación necesaria para cargar el plugin
+import { UserOptions } from "jspdf-autotable";
+
+// 1. Definimos la interfaz para que TypeScript reconozca autoTable en el objeto doc
+interface jsPDFWithPlugin extends jsPDF {
+  autoTable: (options: UserOptions) => jsPDF;
+}
 
 const API_URL = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+
 const api = axios.create({ baseURL: API_URL });
+
+api.interceptors.request.use((config) => {
+  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`;
+  }
+  return config;
+});
 
 interface Estadisticas {
   fecha: string;
   total_ventas: number;
   cantidad_pedidos: number;
-  cantidad_items: number;
   metodos_pago: Record<string, number>;
-}
-
-interface ProductoTop {
-  id: number;
-  nombre: string;
-  cantidad_vendida: number;
-  ingresos_totales: number;
-  categoria?: string;
 }
 
 export default function Dashboard() {
   const router = useRouter();
-  const [usuario, setUsuario] = useState<any>(null);
+  const [usuario, setUsuario] = useState<{ nombre: string | null } | null>(null);
   const [estadisticas, setEstadisticas] = useState<Estadisticas | null>(null);
-  const [topProductos, setTopProductos] = useState<ProductoTop[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [fechaSeleccionada, setFechaSeleccionada] = useState(
-    new Date().toISOString().split("T")[0]
-  );
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -44,292 +48,131 @@ export default function Dashboard() {
 
     setUsuario({ nombre: nombreUsuario });
     cargarDatos();
-  }, [fechaSeleccionada]);
+  }, [router]);
 
   const cargarDatos = async () => {
     setLoading(true);
     setError("");
     try {
-      const [resEstadisticas, resTop] = await Promise.all([
-        api.get(`/estadisticas/diarias?fecha=${fechaSeleccionada}`),
-        api.get(`/estadisticas/top-productos?limite=10&dias=30`),
-      ]);
-
-      setEstadisticas(resEstadisticas.data);
-      setTopProductos(resTop.data);
+      const resEstadisticas = await api.get(`/dashboard/caja-hoy`);
+      
+      setEstadisticas({
+        fecha: new Date().toISOString().split("T")[0],
+        total_ventas: resEstadisticas.data.total,
+        cantidad_pedidos: resEstadisticas.data.cantidad_pedidos,
+        metodos_pago: resEstadisticas.data.por_metodo || {},
+      });
     } catch (err: any) {
-      setError(err.response?.data?.detail || "Error al cargar datos");
+      setError("Error al cargar datos. Verifica la conexión.");
     } finally {
       setLoading(false);
     }
   };
 
+  const generarPDF = () => {
+    if (!estadisticas) return;
+
+    // 2. Casteamos el documento a nuestra interfaz extendida
+    const doc = new jsPDF() as jsPDFWithPlugin;
+    const fechaFmt = new Date().toLocaleDateString("es-AR");
+
+    doc.setFontSize(18);
+    doc.text("Reporte de Ventas Diario - POS Bebidas", 14, 20);
+    
+    doc.setFontSize(11);
+    doc.text(`Operador: ${usuario?.nombre || "N/A"}`, 14, 30);
+    doc.text(`Fecha: ${fechaFmt}`, 14, 35);
+
+    // 3. Usamos autoTable como método del documento
+    doc.autoTable({
+      startY: 45,
+      head: [["Concepto", "Valor"]],
+      body: [
+        ["Total Ventas", `$${estadisticas.total_ventas.toLocaleString("es-AR")}`],
+        ["Cantidad Pedidos", estadisticas.cantidad_pedidos.toString()],
+      ],
+      theme: 'striped',
+      headStyles: { fillColor: [5, 150, 105] } // Color verde esmeralda
+    });
+
+    const pagosBody = Object.entries(estadisticas.metodos_pago).map(([m, v]) => [
+      m, 
+      `$${v.toLocaleString("es-AR")}`
+    ]);
+
+    doc.autoTable({
+      startY: (doc as any).lastAutoTable.finalY + 10,
+      head: [["Método de Pago", "Monto"]],
+      body: pagosBody,
+    });
+
+    doc.save(`Reporte_Ventas_${estadisticas.fecha}.pdf`);
+  };
+
   const logout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("usuario_email");
-    localStorage.removeItem("usuario_nombre");
+    localStorage.clear();
     router.push("/login");
   };
 
-  const irAPOS = () => {
-    router.push("/");
-  };
-
   return (
-    <div className="min-h-screen bg-gradient-to-br from-rose-50 via-purple-50 to-blue-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* HEADER */}
-        <div className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-6xl mx-auto">
+        <header className="flex flex-col md:flex-row justify-between items-center mb-8 bg-white p-6 rounded-xl shadow-sm gap-4">
           <div>
-            <h1 className="text-4xl font-bold text-gray-800">📊 Dashboard</h1>
-            <p className="text-gray-600 mt-1">POS Bebidas - Estadísticas de Ventas</p>
+            <h1 className="text-3xl font-bold text-slate-800">📊 Dashboard</h1>
+            <p className="text-slate-500 text-sm">Resumen de ventas y caja</p>
           </div>
           <div className="flex gap-3">
-            {usuario && (
-              <span className="bg-yellow-200 text-gray-900 px-4 py-2 rounded-lg font-semibold flex items-center gap-2">
-                👤 {usuario.nombre}
-              </span>
-            )}
-            <button
-              onClick={irAPOS}
-              className="bg-blue-400 hover:bg-blue-500 text-gray-900 px-4 py-2 rounded-lg font-bold transition"
+            <button 
+              onClick={generarPDF}
+              className="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2 rounded-lg font-semibold transition-colors"
             >
-              🛒 Ir a POS
+              Descargar PDF
             </button>
-            <button
-              onClick={logout}
-              className="bg-red-400 hover:bg-red-500 text-gray-900 px-4 py-2 rounded-lg font-bold transition"
+            <button 
+              onClick={logout} 
+              className="bg-slate-100 hover:bg-slate-200 text-slate-600 px-4 py-2 rounded-lg font-semibold transition-colors"
             >
-              🚪 Salir
+              Cerrar Sesión
             </button>
           </div>
-        </div>
-
-        {/* SELECTOR DE FECHA */}
-        <div className="mb-6 flex gap-4">
-          <input
-            type="date"
-            value={fechaSeleccionada}
-            onChange={(e) => setFechaSeleccionada(e.target.value)}
-            className="px-4 py-2 border-2 border-purple-300 rounded-lg text-gray-900 bg-purple-50 font-semibold"
-          />
-          <button
-            onClick={() =>
-              setFechaSeleccionada(new Date().toISOString().split("T")[0])
-            }
-            className="bg-purple-400 hover:bg-purple-500 text-gray-900 px-4 py-2 rounded-lg font-bold transition"
-          >
-            Hoy
-          </button>
-        </div>
+        </header>
 
         {error && (
-          <div className="bg-red-100 border-2 border-red-400 text-red-800 px-4 py-3 rounded-lg mb-6 font-semibold">
-            ⚠️ {error}
+          <div className="bg-red-50 text-red-600 p-4 rounded-lg mb-6 border border-red-100">
+            {error}
           </div>
         )}
 
         {loading ? (
-          <div className="text-center py-12">
-            <p className="text-gray-600 text-lg">⏳ Cargando datos...</p>
+          <div className="flex justify-center items-center h-64">
+            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600"></div>
           </div>
         ) : (
-          <>
-            {/* TARJETAS PRINCIPALES */}
-            {estadisticas && (
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                
-                {/* TOTAL VENTAS */}
-                <div className="bg-gradient-to-br from-blue-200 to-blue-100 p-6 rounded-2xl shadow-lg border-2 border-blue-300">
-                  <p className="text-gray-700 text-sm font-semibold">💰 Total de Ventas</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    ${Number(estadisticas.total_ventas).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-700 mt-2">
-                    {estadisticas.cantidad_pedidos} pedidos
-                  </p>
-                </div>
-
-                {/* CANTIDAD PEDIDOS */}
-                <div className="bg-gradient-to-br from-green-200 to-green-100 p-6 rounded-2xl shadow-lg border-2 border-green-300">
-                  <p className="text-gray-700 text-sm font-semibold">📦 Pedidos</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    {estadisticas.cantidad_pedidos}
-                  </p>
-                  <p className="text-xs text-gray-700 mt-2">
-                    {estadisticas.cantidad_items} items vendidos
-                  </p>
-                </div>
-
-                {/* EFECTIVO */}
-                <div className="bg-gradient-to-br from-yellow-200 to-yellow-100 p-6 rounded-2xl shadow-lg border-2 border-yellow-300">
-                  <p className="text-gray-700 text-sm font-semibold">💵 Efectivo</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    ${Number(estadisticas.metodos_pago["Efectivo"] || 0).toFixed(2)}
-                  </p>
-                </div>
-
-                {/* FIADO */}
-                <div className="bg-gradient-to-br from-orange-200 to-orange-100 p-6 rounded-2xl shadow-lg border-2 border-orange-300">
-                  <p className="text-gray-700 text-sm font-semibold">📝 Fiado</p>
-                  <p className="text-3xl font-bold text-gray-900 mt-2">
-                    ${Number(estadisticas.metodos_pago["Fiado"] || 0).toFixed(2)}
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* MÉTODOS DE PAGO */}
-            {estadisticas && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-                
-                {/* DESGLOSE DE MÉTODOS */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-purple-200">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                    💳 Métodos de Pago
-                  </h2>
-                  <div className="space-y-3">
-                    {Object.entries(estadisticas.metodos_pago).map(
-                      ([metodo, cantidad]: [string, any]) => {
-                        const total = estadisticas.total_ventas || 1;
-                        const porcentaje = Math.round((cantidad / total) * 100);
-                        const colores: Record<string, string> = {
-                          Efectivo: "from-green-300 to-green-200",
-                          Transferencia: "from-blue-300 to-blue-200",
-                          Fiado: "from-orange-300 to-orange-200",
-                        };
-
-                        return (
-                          <div key={metodo}>
-                            <div className="flex justify-between mb-1">
-                              <span className="font-semibold text-gray-800">
-                                {metodo}
-                              </span>
-                              <span className="text-gray-700 font-bold">
-                                ${Number(cantidad).toFixed(2)} ({porcentaje}%)
-                              </span>
-                            </div>
-                            <div className="w-full bg-gray-200 rounded-full h-3">
-                              <div
-                                className={`bg-gradient-to-r ${
-                                  colores[metodo] || "from-gray-400 to-gray-300"
-                                } h-3 rounded-full`}
-                                style={{ width: `${porcentaje}%` }}
-                              />
-                            </div>
-                          </div>
-                        );
-                      }
-                    )}
-                  </div>
-                </div>
-
-                {/* RESUMEN RÁPIDO */}
-                <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-pink-200">
-                  <h2 className="text-2xl font-bold text-gray-800 mb-4">
-                    📈 Resumen del Día
-                  </h2>
-                  <div className="space-y-3">
-                    <div className="flex justify-between py-2 border-b-2 border-pink-100">
-                      <span className="text-gray-700">Fecha:</span>
-                      <span className="font-bold text-gray-900">
-                        {new Date(estadisticas.fecha).toLocaleDateString("es-AR")}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b-2 border-pink-100">
-                      <span className="text-gray-700">Total Ventas:</span>
-                      <span className="font-bold text-blue-700 text-lg">
-                        ${Number(estadisticas.total_ventas).toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b-2 border-pink-100">
-                      <span className="text-gray-700">Cantidad Pedidos:</span>
-                      <span className="font-bold text-green-700 text-lg">
-                        {estadisticas.cantidad_pedidos}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2 border-b-2 border-pink-100">
-                      <span className="text-gray-700">Items Vendidos:</span>
-                      <span className="font-bold text-purple-700 text-lg">
-                        {estadisticas.cantidad_items}
-                      </span>
-                    </div>
-                    <div className="flex justify-between py-2 bg-blue-50 p-2 rounded-lg mt-2">
-                      <span className="text-gray-700 font-semibold">Ticket Promedio:</span>
-                      <span className="font-bold text-blue-900 text-lg">
-                        $
-                        {estadisticas.cantidad_pedidos > 0
-                          ? (
-                              estadisticas.total_ventas /
-                              estadisticas.cantidad_pedidos
-                            ).toFixed(2)
-                          : "0.00"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* TOP PRODUCTOS */}
-            <div className="bg-white rounded-2xl shadow-lg p-6 border-2 border-blue-200">
-              <h2 className="text-2xl font-bold text-gray-800 mb-6">
-                🏆 Top Productos (Últimos 30 días)
+          <main className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="bg-gradient-to-br from-blue-600 to-blue-700 text-white p-6 rounded-2xl shadow-md">
+              <p className="text-blue-100 text-sm font-medium">Ventas Totales</p>
+              <h2 className="text-4xl font-bold mt-2">
+                ${estadisticas?.total_ventas.toLocaleString("es-AR")}
               </h2>
-              {topProductos.length === 0 ? (
-                <p className="text-gray-600 text-center py-8">
-                  Sin datos de ventas aún
-                </p>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b-2 border-blue-200 bg-blue-50">
-                        <th className="text-left py-3 px-4 font-bold text-gray-800">
-                          Producto
-                        </th>
-                        <th className="text-center py-3 px-4 font-bold text-gray-800">
-                          Cantidad
-                        </th>
-                        <th className="text-right py-3 px-4 font-bold text-gray-800">
-                          Ingresos
-                        </th>
-                        <th className="text-center py-3 px-4 font-bold text-gray-800">
-                          Categoría
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {topProductos.map((producto, idx) => (
-                        <tr
-                          key={producto.id}
-                          className={`border-b border-gray-200 ${
-                            idx % 2 === 0 ? "bg-white" : "bg-blue-50"
-                          } hover:bg-blue-100 transition`}
-                        >
-                          <td className="py-3 px-4 text-gray-900 font-semibold">
-                            {idx + 1}. {producto.nombre}
-                          </td>
-                          <td className="py-3 px-4 text-center text-gray-900 font-bold">
-                            {producto.cantidad_vendida}
-                          </td>
-                          <td className="py-3 px-4 text-right text-gray-900 font-bold text-lg">
-                            ${Number(producto.ingresos_totales).toFixed(2)}
-                          </td>
-                          <td className="py-3 px-4 text-center">
-                            <span className="bg-purple-200 text-gray-900 px-3 py-1 rounded-full text-sm font-semibold">
-                              {producto.categoria || "Sin categoría"}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              )}
             </div>
-          </>
+            
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <p className="text-slate-500 text-sm font-medium">Pedidos Realizados</p>
+              <h2 className="text-4xl font-bold text-slate-800 mt-2">
+                {estadisticas?.cantidad_pedidos}
+              </h2>
+            </div>
+
+            <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
+              <p className="text-slate-500 text-sm font-medium">Ticket Promedio</p>
+              <h2 className="text-4xl font-bold text-slate-800 mt-2">
+                ${estadisticas?.cantidad_pedidos 
+                  ? (estadisticas.total_ventas / estadisticas.cantidad_pedidos).toLocaleString("es-AR", { maximumFractionDigits: 0 }) 
+                  : "0"}
+              </h2>
+            </div>
+          </main>
         )}
       </div>
     </div>
