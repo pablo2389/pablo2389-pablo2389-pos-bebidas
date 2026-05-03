@@ -11,6 +11,18 @@ from pydantic import BaseModel
 from typing import List
 
 # =====================
+# APP (PRIMERO SIEMPRE)
+# =====================
+app = FastAPI(title="API POS Bebidas", version="1.0.0")
+
+# =====================
+# ROOT TEST
+# =====================
+@app.get("/")
+def root():
+    return {"status": "API OK"}
+
+# =====================
 # ENV
 # =====================
 load_dotenv()
@@ -24,8 +36,6 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-app = FastAPI(title="API POS Bebidas", version="1.0.0")
-
 # =====================
 # CORS
 # =====================
@@ -34,7 +44,7 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",
         "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
-        "https://kiosco-grace.vercel.app",  # frontend en Vercel
+        "https://kiosco-grace.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -74,97 +84,134 @@ class UsuarioCreate(BaseModel):
     nombre: str
     password: str
 
+class ItemPedido(BaseModel):
+    producto_id: int
+    cantidad: int
+
+class PedidoCreate(BaseModel):
+    cliente: str
+    telefono: str | None = ""
+    metodo_pago: str
+    estado: str = "completado"
+    descuento: float = 0
+    items: List[ItemPedido]
+
 # =====================
-# LOGIN (BODY JSON)
+# LOGIN
 # =====================
 @app.post("/auth/login")
 def login(data: Login):
-    res = (
-        supabase.table("usuarios")
-        .select("*")
-        .eq("email", data.email)
-        .execute()
-    )
+    res = supabase.table("usuarios").select("*").eq("email", data.email).execute()
 
     if not res.data:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    user = res.data[0]  # tomar el primer usuario
+    user = res.data[0]
 
     if user["password"] != data.password:
         raise HTTPException(status_code=401, detail="Password incorrecto")
 
-    token = crear_token(
-        user["id"],
-        user["email"],
-        user["rol"],
-        user["kiosco_id"],
-    )
+    token = crear_token(user["id"], user["email"], user["rol"], user["kiosco_id"])
 
-    return {
-        "token": token,
-        "nombre": user["nombre"],
-    }
+    return {"token": token, "nombre": user["nombre"]}
 
 # =====================
 # REGISTRO
 # =====================
 @app.post("/auth/registrar")
 def registrar(usuario: UsuarioCreate):
-    existe = (
-        supabase.table("usuarios")
-        .select("id")
-        .eq("email", usuario.email)
-        .execute()
-    )
+    existe = supabase.table("usuarios").select("id").eq("email", usuario.email).execute()
 
     if existe.data:
         raise HTTPException(status_code=400, detail="Usuario ya existe")
 
     kiosco_id = str(uuid.uuid4())
 
-    supabase.table("kioscos").insert(
-        {
-            "id": kiosco_id,
-            "nombre": f"Kiosco de {usuario.nombre}",
-        }
-    ).execute()
+    supabase.table("kioscos").insert({
+        "id": kiosco_id,
+        "nombre": f"Kiosco de {usuario.nombre}",
+    }).execute()
 
-    res = supabase.table("usuarios").insert(
-        {
-            "email": usuario.email,
-            "nombre": usuario.nombre,
-            "password": usuario.password,
-            "rol": "admin",
-            "kiosco_id": kiosco_id,
-        }
-    ).execute()
+    res = supabase.table("usuarios").insert({
+        "email": usuario.email,
+        "nombre": usuario.nombre,
+        "password": usuario.password,
+        "rol": "admin",
+        "kiosco_id": kiosco_id,
+    }).execute()
 
     user = res.data[0]
 
     token = crear_token(user["id"], user["email"], "admin", kiosco_id)
 
-    return {
-        "token": token,
-        "nombre": user["nombre"],
-    }
+    return {"token": token, "nombre": user["nombre"]}
 
 # =====================
-# CAJA HOY (FIX SAFE)
+# PEDIDOS
+# =====================
+@app.post("/pedidos")
+def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    total = 0
+    items_guardar = []
+
+    for item in pedido.items:
+        producto = (
+            supabase.table("productos")
+            .select("precio")
+            .eq("id", item.producto_id)
+            .single()
+            .execute()
+            .data
+        )
+
+        if not producto:
+            raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+        precio = producto["precio"]
+        subtotal = precio * item.cantidad
+        total += subtotal
+
+        items_guardar.append({
+            "producto_id": item.producto_id,
+            "cantidad": item.cantidad,
+            "precio_unitario": precio
+        })
+
+    pedido_db = supabase.table("pedidos").insert({
+        "kiosco_id": kiosco_id,
+        "cliente": pedido.cliente,
+        "telefono": pedido.telefono,
+        "metodo_pago": pedido.metodo_pago,
+        "estado": pedido.estado,
+        "descuento": pedido.descuento,
+        "total": total,
+        "created_at": datetime.utcnow().isoformat()
+    }).execute()
+
+    pedido_id = pedido_db.data[0]["id"]
+
+    for item in items_guardar:
+        item["pedido_id"] = pedido_id
+        supabase.table("pedido_items").insert(item).execute()
+
+    return {"message": "Pedido creado", "total": total, "pedido_id": pedido_id}
+
+# =====================
+# CAJA HOY
 # =====================
 @app.get("/dashboard/caja-hoy")
 def caja_hoy(token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
     hoy = datetime.now().date()
 
-    res = (
-        supabase.table("pedidos")
-        .select("total, metodo_pago")
-        .eq("kiosco_id", kiosco_id)
-        .gte("created_at", f"{hoy}T00:00:00")
-        .lte("created_at", f"{hoy}T23:59:59")
+    res = supabase.table("pedidos") \
+        .select("total, metodo_pago") \
+        .eq("kiosco_id", kiosco_id) \
+        .gte("created_at", f"{hoy}T00:00:00") \
+        .lte("created_at", f"{hoy}T23:59:59") \
         .execute()
-    )
 
     pedidos = res.data or []
 
@@ -185,18 +232,27 @@ def caja_hoy(token=Depends(verificar_token)):
     }
 
 # =====================
-# STOCK (SAFE RETURN)
+# STOCK
 # =====================
 @app.get("/dashboard/productos-bajo-stock")
 def productos_bajo_stock(token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    res = (
-        supabase.table("productos")
-        .select("*")
-        .eq("kiosco_id", kiosco_id)
-        .lt("stock", 5)
+    res = supabase.table("productos") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .lt("stock", 5) \
         .execute()
-    )
 
     return res.data or []
+
+# =====================
+# DEBUG
+# =====================
+@app.get("/debug-db")
+def debug_db():
+    res = supabase.table("pedidos").select("*").limit(1).execute()
+    return res
+@app.get("/ping")
+def ping():
+    return {"pong": True}
