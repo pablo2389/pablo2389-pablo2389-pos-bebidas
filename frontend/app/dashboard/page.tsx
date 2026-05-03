@@ -57,7 +57,9 @@ export default function DashboardPage() {
       const token = localStorage.getItem("token");
 
       // ===== CAJA =====
-      const resCaja = await fetch(`${API}/dashboard/caja-hoy`, {
+      const hoy = new Date().toISOString().split("T")[0];
+
+const resCaja = await fetch(`${API}/estadisticas/diarias?fecha=${hoy}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -68,7 +70,12 @@ export default function DashboardPage() {
       }
 
       const dataCaja = await resCaja.json();
-      setData(dataCaja);
+
+setData({
+  total: dataCaja.total_ventas,
+  cantidad_pedidos: dataCaja.cantidad_pedidos,
+  por_metodo: dataCaja.metodos_pago,
+});
 
       // ===== STOCK =====
       const resStock = await fetch(`${API}/dashboard/productos-bajo-stock`, {
