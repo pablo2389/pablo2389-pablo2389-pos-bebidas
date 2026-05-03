@@ -27,10 +27,10 @@ export default function Login() {
 
       if (esRegistro) {
         if (!nombre.trim()) {
-          throw new Error("Nombre obligatorio");
+          throw new Error("El nombre es obligatorio para el registro");
         }
 
-        // REGISTRO: body JSON
+        // REGISTRO: Enviando datos en el cuerpo (Body)
         res = await api("/auth/registrar", {
           method: "POST",
           body: JSON.stringify({
@@ -40,27 +40,32 @@ export default function Login() {
           }),
         });
       } else {
-        // LOGIN: QUERY PARAMS (lo que tu backend espera)
-        const params = new URLSearchParams({
-          email: cleanEmail,
-          password: cleanPassword,
-        });
-
-        res = await api(`/auth/login?${params.toString()}`, {
+        // LOGIN CORREGIDO: Ahora enviamos JSON en el body en lugar de URL params
+        // Esto elimina el error 422 (Unprocessable Content)
+        res = await api("/auth/login", {
           method: "POST",
+          body: JSON.stringify({
+            email: cleanEmail,
+            password: cleanPassword,
+          }),
         });
       }
 
-      if (!res?.token) {
-        throw new Error("No se recibió token");
+      // Verificación de respuesta y token
+      if (!res || !res.token) {
+        throw new Error(res?.detail || res?.message || "Credenciales incorrectas o error de servidor");
       }
 
+      // Guardado de sesión
       localStorage.setItem("token", res.token);
       localStorage.setItem("usuario_nombre", res.nombre || "");
 
+      // Redirección al inicio
       router.replace("/");
+      
     } catch (err: any) {
-      setError(err.message || "Error en login");
+      console.error("Error en la autenticación:", err);
+      setError(err.message || "Ocurrió un error inesperado");
     } finally {
       setLoading(false);
     }
@@ -70,52 +75,78 @@ export default function Login() {
     <div className="min-h-screen flex items-center justify-center bg-slate-100">
       <form
         onSubmit={handleSubmit}
-        className="bg-white p-6 rounded-xl shadow w-96 space-y-3"
+        className="bg-white p-8 rounded-xl shadow-lg w-96 space-y-4"
       >
-        <h1 className="text-xl font-bold text-center">
-          {esRegistro ? "Registro" : "Login"}
+        <h1 className="text-2xl font-bold text-center text-slate-800">
+          {esRegistro ? "Crear Cuenta" : "Iniciar Sesión"}
         </h1>
 
-        <input
-          className="w-full border p-2 rounded"
-          placeholder="Email"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600">Email</label>
+          <input
+            type="email"
+            required
+            className="w-full border border-slate-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="correo@ejemplo.com"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+          />
+        </div>
 
         {esRegistro && (
-          <input
-            className="w-full border p-2 rounded"
-            placeholder="Nombre"
-            value={nombre}
-            onChange={(e) => setNombre(e.target.value)}
-          />
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-slate-600">Nombre completo</label>
+            <input
+              type="text"
+              required
+              className="w-full border border-slate-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+              placeholder="Tu nombre"
+              value={nombre}
+              onChange={(e) => setNombre(e.target.value)}
+            />
+          </div>
         )}
 
-        <input
-          type="password"
-          className="w-full border p-2 rounded"
-          placeholder="Password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-slate-600">Contraseña</label>
+          <input
+            type="password"
+            required
+            className="w-full border border-slate-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
+            placeholder="••••••••"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+          />
+        </div>
 
-        {error && <p className="text-red-500 text-sm">{error}</p>}
+        {error && (
+          <p className="bg-red-50 text-red-500 text-xs p-2 rounded border border-red-200">
+            {error}
+          </p>
+        )}
 
         <button
+          type="submit"
           disabled={loading}
-          className="w-full bg-blue-600 text-white p-2 rounded"
+          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2 rounded-lg transition-colors disabled:bg-blue-300"
         >
-          {loading ? "Cargando..." : esRegistro ? "Crear cuenta" : "Entrar"}
+          {loading ? "Procesando..." : esRegistro ? "Registrarse" : "Ingresar"}
         </button>
 
-        <button
-          type="button"
-          onClick={() => setEsRegistro(!esRegistro)}
-          className="text-sm text-blue-600 w-full"
-        >
-          Cambiar a {esRegistro ? "Login" : "Registro"}
-        </button>
+        <div className="pt-2">
+          <button
+            type="button"
+            onClick={() => {
+              setEsRegistro(!esRegistro);
+              setError("");
+            }}
+            className="text-sm text-blue-600 hover:underline w-full text-center"
+          >
+            {esRegistro 
+              ? "¿Ya tienes cuenta? Inicia sesión" 
+              : "¿No tienes cuenta? Regístrate aquí"}
+          </button>
+        </div>
       </form>
     </div>
   );
