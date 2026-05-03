@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { api } from "../utils/api"; // ajustá la ruta si este archivo está en otra carpeta
 
 type Item = {
   descripcion: string;
@@ -13,13 +14,15 @@ export default function POSPage() {
   const [precio, setPrecio] = useState(0);
   const [cantidad, setCantidad] = useState(1);
   const [carrito, setCarrito] = useState<Item[]>([]);
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const agregarItem = () => {
     if (!descripcion || precio <= 0) return;
 
     setCarrito([
       ...carrito,
-      { descripcion, precio, cantidad }
+      { descripcion, precio, cantidad },
     ]);
 
     setDescripcion("");
@@ -32,12 +35,45 @@ export default function POSPage() {
     0
   );
 
+  const confirmarVenta = async () => {
+    if (carrito.length === 0) {
+      setError("No hay ítems en el carrito");
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      // Ajustá este body al formato que espera tu backend en /pedidos
+      const body = {
+        items: carrito.map((i) => ({
+          descripcion: i.descripcion,
+          precio: i.precio,
+          cantidad: i.cantidad,
+        })),
+        total,
+        metodo_pago: "efectivo",
+      };
+
+      await api("/pedidos", {
+        method: "POST",
+        body: JSON.stringify(body),
+      });
+
+      // Si todo ok, limpiamos carrito
+      setCarrito([]);
+    } catch (err: any) {
+      setError(err.message || "Error al crear pedido");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f5e6d3] p-4">
-      
       {/* CONTENEDOR PRINCIPAL */}
       <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-4 space-y-4">
-
         {/* HEADER */}
         <div className="flex justify-between items-center">
           <h1 className="text-lg font-bold">Speed Box</h1>
@@ -114,13 +150,26 @@ export default function POSPage() {
             </div>
           )}
 
-          {/* TOTAL */}
-          <div className="flex justify-between font-bold border-t pt-2">
-            <span>Total</span>
-            <span>${total}</span>
+          {/* TOTAL + CONFIRMAR */}
+          <div className="space-y-2 border-t pt-2">
+            <div className="flex justify-between font-bold">
+              <span>Total</span>
+              <span>${total}</span>
+            </div>
+
+            {error && (
+              <p className="text-red-500 text-sm">{error}</p>
+            )}
+
+            <button
+              onClick={confirmarVenta}
+              disabled={loading}
+              className="w-full bg-green-600 text-white py-2 rounded"
+            >
+              {loading ? "Registrando..." : "Confirmar venta"}
+            </button>
           </div>
         </div>
-
       </div>
     </div>
   );
