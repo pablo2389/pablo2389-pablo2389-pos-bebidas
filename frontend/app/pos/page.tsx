@@ -7,8 +7,6 @@ type Item = {
   descripcion: string;
   precio: number;
   cantidad: number;
-  // si más adelante tenés id de producto, agregalo acá:
-  // producto_id?: number;
 };
 
 export default function POSPage() {
@@ -20,7 +18,7 @@ export default function POSPage() {
   const [loading, setLoading] = useState(false);
 
   const agregarItem = () => {
-    if (!descripcion || precio <= 0) return;
+    if (!descripcion || precio <= 0 || cantidad <= 0) return;
 
     setCarrito([
       ...carrito,
@@ -47,16 +45,15 @@ export default function POSPage() {
     setError("");
 
     try {
-      // Body alineado con PedidoCreate del backend
       const body = {
-        cliente: "Mostrador",        // placeholder, ajustá si tenés input
-        telefono: "",                // opcional
-        metodo_pago: "Efectivo",     // coincide con lo que usa backend
-        estado: "confirmado",        // o lo que tengas por defecto
+        cliente: "Mostrador",
+        telefono: "",
+        metodo_pago: "Efectivo",
+        estado: "confirmado",
         descuento: 0,
+
         items: carrito.map((i) => ({
-          // TODO: cuando tengas productos reales, usá el id correcto
-          producto_id: 1,                // <-- CAMBIAR a i.producto_id cuando exista
+          producto_id: 1, // luego lo cambiás por i.producto_id si existe
           cantidad: i.cantidad,
           precio_unitario: i.precio,
         })),
@@ -78,6 +75,8 @@ export default function POSPage() {
   return (
     <div className="min-h-screen bg-[#f5e6d3] p-4">
       <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-4 space-y-4">
+
+        {/* Header */}
         <div className="flex justify-between items-center">
           <h1 className="text-lg font-bold">Speed Box</h1>
           <button className="bg-gray-800 text-white px-3 py-1 rounded text-sm">
@@ -85,6 +84,7 @@ export default function POSPage() {
           </button>
         </div>
 
+        {/* Formulario */}
         <div className="space-y-2">
           <h2 className="font-semibold">Agregar ítem</h2>
 
@@ -122,6 +122,7 @@ export default function POSPage() {
           </button>
         </div>
 
+        {/* Carrito */}
         <div className="space-y-2">
           <h2 className="font-semibold">Carrito</h2>
 
@@ -150,6 +151,7 @@ export default function POSPage() {
             </div>
           )}
 
+          {/* Total + acción */}
           <div className="space-y-2 border-t pt-2">
             <div className="flex justify-between font-bold">
               <span>Total</span>
@@ -169,6 +171,7 @@ export default function POSPage() {
             </button>
           </div>
         </div>
+
       </div>
     </div>
   );
