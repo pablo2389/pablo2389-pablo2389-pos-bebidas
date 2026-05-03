@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { api } from "../utils/api"; // ajustá la ruta si este archivo está en otra carpeta
+import { api } from "../utils/api";
 
 type Item = {
   descripcion: string;
   precio: number;
   cantidad: number;
+  // si más adelante tenés id de producto, agregalo acá:
+  // producto_id?: number;
 };
 
 export default function POSPage() {
@@ -45,15 +47,19 @@ export default function POSPage() {
     setError("");
 
     try {
-      // Ajustá este body al formato que espera tu backend en /pedidos
+      // Body alineado con PedidoCreate del backend
       const body = {
+        cliente: "Mostrador",        // placeholder, ajustá si tenés input
+        telefono: "",                // opcional
+        metodo_pago: "Efectivo",     // coincide con lo que usa backend
+        estado: "confirmado",        // o lo que tengas por defecto
+        descuento: 0,
         items: carrito.map((i) => ({
-          descripcion: i.descripcion,
-          precio: i.precio,
+          // TODO: cuando tengas productos reales, usá el id correcto
+          producto_id: 1,                // <-- CAMBIAR a i.producto_id cuando exista
           cantidad: i.cantidad,
+          precio_unitario: i.precio,
         })),
-        total,
-        metodo_pago: "efectivo",
       };
 
       await api("/pedidos", {
@@ -61,7 +67,6 @@ export default function POSPage() {
         body: JSON.stringify(body),
       });
 
-      // Si todo ok, limpiamos carrito
       setCarrito([]);
     } catch (err: any) {
       setError(err.message || "Error al crear pedido");
@@ -72,9 +77,7 @@ export default function POSPage() {
 
   return (
     <div className="min-h-screen bg-[#f5e6d3] p-4">
-      {/* CONTENEDOR PRINCIPAL */}
       <div className="w-full max-w-md mx-auto bg-white rounded-xl shadow-md p-4 space-y-4">
-        {/* HEADER */}
         <div className="flex justify-between items-center">
           <h1 className="text-lg font-bold">Speed Box</h1>
           <button className="bg-gray-800 text-white px-3 py-1 rounded text-sm">
@@ -82,7 +85,6 @@ export default function POSPage() {
           </button>
         </div>
 
-        {/* FORM */}
         <div className="space-y-2">
           <h2 className="font-semibold">Agregar ítem</h2>
 
@@ -94,7 +96,6 @@ export default function POSPage() {
             className="w-full border rounded p-2 text-sm"
           />
 
-          {/* FILA RESPONSIVE */}
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               type="number"
@@ -121,7 +122,6 @@ export default function POSPage() {
           </button>
         </div>
 
-        {/* CARRITO */}
         <div className="space-y-2">
           <h2 className="font-semibold">Carrito</h2>
 
@@ -150,7 +150,6 @@ export default function POSPage() {
             </div>
           )}
 
-          {/* TOTAL + CONFIRMAR */}
           <div className="space-y-2 border-t pt-2">
             <div className="flex justify-between font-bold">
               <span>Total</span>
