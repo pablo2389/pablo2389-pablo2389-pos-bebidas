@@ -31,15 +31,12 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "http://localhost:3000",
-        "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
         "https://kiosco-grace.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 # =====================
 # AUTH & SECURITY
 # =====================
