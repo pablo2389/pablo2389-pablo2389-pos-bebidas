@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { api } from "../utils/api";
 
-export default function Login() {
+export default function Page() {
   const router = useRouter();
 
   const [email, setEmail] = useState("");
@@ -23,14 +23,17 @@ export default function Login() {
       const cleanEmail = email.trim().toLowerCase();
       const cleanPassword = password.trim();
 
+      if (!cleanEmail || !cleanPassword) {
+        throw new Error("Email y contraseña son obligatorios");
+      }
+
       let res;
 
       if (esRegistro) {
         if (!nombre.trim()) {
-          throw new Error("El nombre es obligatorio para el registro");
+          throw new Error("El nombre es obligatorio");
         }
 
-        // REGISTRO: Enviando datos en el cuerpo (Body)
         res = await api("/auth/registrar", {
           method: "POST",
           body: JSON.stringify({
@@ -40,8 +43,6 @@ export default function Login() {
           }),
         });
       } else {
-        // LOGIN CORREGIDO: Ahora enviamos JSON en el body en lugar de URL params
-        // Esto elimina el error 422 (Unprocessable Content)
         res = await api("/auth/login", {
           method: "POST",
           body: JSON.stringify({
@@ -51,21 +52,21 @@ export default function Login() {
         });
       }
 
-      // Verificación de respuesta y token
-      if (!res || !res.token) {
-        throw new Error(res?.detail || res?.message || "Credenciales incorrectas o error de servidor");
+      if (!res?.token) {
+        throw new Error(
+          res?.detail ||
+          res?.message ||
+          "Respuesta inválida del servidor"
+        );
       }
 
-      // Guardado de sesión
       localStorage.setItem("token", res.token);
       localStorage.setItem("usuario_nombre", res.nombre || "");
 
-      // Redirección al inicio
       router.replace("/");
-      
     } catch (err: any) {
-      console.error("Error en la autenticación:", err);
-      setError(err.message || "Ocurrió un error inesperado");
+      console.error("❌ Error en login:", err);
+      setError(err.message || "Error inesperado");
     } finally {
       setLoading(false);
     }
@@ -77,76 +78,52 @@ export default function Login() {
         onSubmit={handleSubmit}
         className="bg-white p-8 rounded-xl shadow-lg w-96 space-y-4"
       >
-        <h1 className="text-2xl font-bold text-center text-slate-800">
+        <h1 className="text-2xl font-bold text-center">
           {esRegistro ? "Crear Cuenta" : "Iniciar Sesión"}
         </h1>
 
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600">Email</label>
-          <input
-            type="email"
-            required
-            className="w-full border border-slate-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="correo@ejemplo.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-          />
-        </div>
+        <input
+          type="email"
+          placeholder="Email"
+          className="w-full border p-2 rounded"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+        />
 
         {esRegistro && (
-          <div className="space-y-2">
-            <label className="text-sm font-medium text-slate-600">Nombre completo</label>
-            <input
-              type="text"
-              required
-              className="w-full border border-slate-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-              placeholder="Tu nombre"
-              value={nombre}
-              onChange={(e) => setNombre(e.target.value)}
-            />
-          </div>
-        )}
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-slate-600">Contraseña</label>
           <input
-            type="password"
-            required
-            className="w-full border border-slate-300 p-2 rounded-lg focus:ring-2 focus:ring-blue-500 outline-none"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
+            type="text"
+            placeholder="Nombre"
+            className="w-full border p-2 rounded"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
           />
-        </div>
-
-        {error && (
-          <p className="bg-red-50 text-red-500 text-xs p-2 rounded border border-red-200">
-            {error}
-          </p>
         )}
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-2 rounded-lg transition-colors disabled:bg-blue-300"
-        >
-          {loading ? "Procesando..." : esRegistro ? "Registrarse" : "Ingresar"}
+        <input
+          type="password"
+          placeholder="Contraseña"
+          className="w-full border p-2 rounded"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+        />
+
+        {error && <p className="text-red-500 text-sm">{error}</p>}
+
+        <button className="w-full bg-blue-600 text-white p-2 rounded">
+          {loading ? "Procesando..." : "Continuar"}
         </button>
 
-        <div className="pt-2">
-          <button
-            type="button"
-            onClick={() => {
-              setEsRegistro(!esRegistro);
-              setError("");
-            }}
-            className="text-sm text-blue-600 hover:underline w-full text-center"
-          >
-            {esRegistro 
-              ? "¿Ya tienes cuenta? Inicia sesión" 
-              : "¿No tienes cuenta? Regístrate aquí"}
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => {
+            setEsRegistro(!esRegistro);
+            setError("");
+          }}
+          className="text-sm text-blue-600 w-full"
+        >
+          {esRegistro ? "Ya tengo cuenta" : "Crear cuenta"}
+        </button>
       </form>
     </div>
   );

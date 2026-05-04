@@ -1,9 +1,11 @@
 export const API_URL = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
 
 export async function api(path: string, options: RequestInit = {}) {
-  const token = typeof window !== "undefined" ? localStorage.getItem("token") : null;
+  const token =
+    typeof window !== "undefined"
+      ? localStorage.getItem("token")
+      : null;
 
-  // Asegura que el path siempre tenga la barra inicial
   const cleanPath = path.startsWith("/") ? path : `/${path}`;
 
   const headers: HeadersInit = {
@@ -18,16 +20,17 @@ export async function api(path: string, options: RequestInit = {}) {
       headers,
     });
 
-    let data: any;
+    let data: any = null;
+
     try {
       data = await res.json();
     } catch {
-      data = null;
+      // puede venir vacío (204, etc)
     }
 
     if (!res.ok) {
-      // Manejo detallado de errores de FastAPI
       let message = `Error ${res.status}`;
+
       if (data?.detail) {
         if (typeof data.detail === "string") {
           message = data.detail;
@@ -35,12 +38,19 @@ export async function api(path: string, options: RequestInit = {}) {
           message = data.detail.map((e: any) => e.msg).join(", ");
         }
       }
+
+      console.error("❌ Backend error:", {
+        url: `${API_URL}${cleanPath}`,
+        status: res.status,
+        data,
+      });
+
       throw new Error(message);
     }
 
     return data;
   } catch (error: any) {
-    console.error("Error en la conexión con el backend:", error.message);
-    throw new Error("No se pudo conectar con el backend");
+    console.error("❌ Error REAL:", error);
+    throw error; // 🔥 CLAVE: no pisamos el error
   }
 }
