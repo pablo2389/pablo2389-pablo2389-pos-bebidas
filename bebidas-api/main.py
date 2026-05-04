@@ -32,6 +32,7 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 origins = [
     "http://localhost:3000",
     "https://kiosco-grace.vercel.app",
+    "https://pablo2389-pablo2389-pos-bebidas.vercel.app",  # dominio auto de Vercel
 ]
 
 app.add_middleware(
