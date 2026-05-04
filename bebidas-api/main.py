@@ -32,12 +32,12 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 origins = [
     "http://localhost:3000",
     "https://kiosco-grace.vercel.app",
-    "https://pablo2389-pablo2389-pos-bebidas.vercel.app",  # dominio auto de Vercel
+    "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
 ]
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,          # NO usar "*" si usas credenciales
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -46,7 +46,7 @@ app.add_middleware(
 # =====================
 # AUTH & SECURITY
 # =====================
-security = HTTPBearer()  # Por defecto auto_error=True
+security = HTTPBearer()
 
 def crear_token(user_id, email, rol, kiosco_id):
     payload = {
@@ -87,14 +87,14 @@ class PedidoCreate(BaseModel):
     telefono: Optional[str] = ""
     metodo_pago: str
     estado: str = "completado"
-    descuento: float = 0   # lo acepta el body, pero no se guarda
+    descuento: float = 0   # no se persiste en la tabla
     items: List[ItemPedido]
 
 # Productos
 class ProductoBase(BaseModel):
     nombre: str
     precio: float
-    stock: int
+    stock: Optional[int] = 0   # permite NULL en DB
     estado: Optional[str] = "activo"
 
 class ProductoCreate(ProductoBase):
@@ -134,7 +134,6 @@ def login(data: Login):
 
     user = res.data[0]
 
-    # Ojo: en producción deberías hashear la contraseña
     if user["password"] != data.password:
         raise HTTPException(status_code=401, detail="Password incorrecto")
 
@@ -170,7 +169,7 @@ def registrar(usuario: UsuarioCreate):
         {
             "email": usuario.email,
             "nombre": usuario.nombre,
-            "password": usuario.password,  # en producción, hasheada
+            "password": usuario.password,
             "rol": "admin",
             "kiosco_id": kiosco_id,
         }
@@ -195,7 +194,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     total = 0.0
     items_guardar: List[Dict] = []
 
-    # 1) Validar productos y stock, calcular total
+    # Validar productos y stock, calcular total
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
@@ -232,17 +231,16 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
             }
         )
 
-    # 2) Crear pedido
+    # Crear pedido (sin telefono porque la columna no existe)
     pedido_db = (
         supabase.table("pedidos")
         .insert(
             {
                 "kiosco_id": kiosco_id,
                 "cliente": pedido.cliente,
-                "telefono": pedido.telefono,
+                # "telefono": pedido.telefono,
                 "metodo_pago": pedido.metodo_pago,
                 "estado": pedido.estado,
-                # "descuento": pedido.descuento,  # NO existe en la tabla
                 "total": total,
                 "created_at": datetime.utcnow().isoformat(),
             }
@@ -255,12 +253,12 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
 
     pedido_id = pedido_db.data[0]["id"]
 
-    # 3) Insertar items
+    # Insertar items
     for item in items_guardar:
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
 
-    # 4) Actualizar stock de cada producto (versión simple lectura + update)
+    # Actualizar stock de cada producto
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
@@ -271,7 +269,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
             .execute()
         )
         producto = producto_res.data
-        if producto:
+        if producto is not None:
             nuevo_stock = int(producto["stock"]) - item.cantidad
             supabase.table("productos").update(
                 {"stock": nuevo_stock}
