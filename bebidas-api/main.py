@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import jwt
 import uuid
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional
 
 # =====================
 # CONFIGURACIÓN INICIAL
@@ -27,7 +27,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =====================
-# CORS (CORRECTO)
+# CORS
 # =====================
 origins = [
     "http://localhost:3000",
@@ -36,8 +36,8 @@ origins = [
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,  # IMPORTANTE para Authorization header
+    allow_origins=origins,          # NO usar "*" si usas credenciales
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -45,7 +45,7 @@ app.add_middleware(
 # =====================
 # AUTH & SECURITY
 # =====================
-security = HTTPBearer()
+security = HTTPBearer()  # Por defecto auto_error=True
 
 def crear_token(user_id, email, rol, kiosco_id):
     payload = {
@@ -60,7 +60,9 @@ def crear_token(user_id, email, rol, kiosco_id):
 def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
     try:
         return jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
-    except:
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expirado")
+    except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
 # =====================
@@ -81,14 +83,14 @@ class ItemPedido(BaseModel):
 
 class PedidoCreate(BaseModel):
     cliente: str
-    telefono: str | None = ""
+    telefono: Optional[str] = ""
     metodo_pago: str
     estado: str = "completado"
     descuento: float = 0
     items: List[ItemPedido]
 
 # =====================
-# RUTAS
+# RUTAS BÁSICAS
 # =====================
 @app.get("/")
 def root():
@@ -110,6 +112,7 @@ def login(data: Login):
 
     user = res.data[0]
 
+    # Ojo: en producción deberías hashear la contraseña
     if user["password"] != data.password:
         raise HTTPException(status_code=401, detail="Password incorrecto")
 
@@ -117,30 +120,39 @@ def login(data: Login):
 
     return {
         "token": token,
-        "nombre": user["nombre"]
+        "nombre": user["nombre"],
     }
 
 @app.post("/auth/registrar")
 def registrar(usuario: UsuarioCreate):
-    existe = supabase.table("usuarios").select("id").eq("email", usuario.email).execute()
+    existe = (
+        supabase.table("usuarios")
+        .select("id")
+        .eq("email", usuario.email)
+        .execute()
+    )
 
     if existe.data:
         raise HTTPException(status_code=400, detail="Usuario ya existe")
 
     kiosco_id = str(uuid.uuid4())
 
-    supabase.table("kioscos").insert({
-        "id": kiosco_id,
-        "nombre": f"Kiosco de {usuario.nombre}"
-    }).execute()
+    supabase.table("kioscos").insert(
+        {
+            "id": kiosco_id,
+            "nombre": f"Kiosco de {usuario.nombre}",
+        }
+    ).execute()
 
-    res = supabase.table("usuarios").insert({
-        "email": usuario.email,
-        "nombre": usuario.nombre,
-        "password": usuario.password,
-        "rol": "admin",
-        "kiosco_id": kiosco_id,
-    }).execute()
+    res = supabase.table("usuarios").insert(
+        {
+            "email": usuario.email,
+            "nombre": usuario.nombre,
+            "password": usuario.password,  # en producción, hasheada
+            "rol": "admin",
+            "kiosco_id": kiosco_id,
+        }
+    ).execute()
 
     user = res.data[0]
 
@@ -148,7 +160,7 @@ def registrar(usuario: UsuarioCreate):
 
     return {
         "token": token,
-        "nombre": user["nombre"]
+        "nombre": user["nombre"],
     }
 
 # =====================
@@ -158,43 +170,53 @@ def registrar(usuario: UsuarioCreate):
 def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    total = 0
+    total = 0.0
     items_guardar = []
 
     for item in pedido.items:
-        producto_res = supabase.table("productos") \
-            .select("precio") \
-            .eq("id", item.producto_id) \
-            .single() \
+        producto_res = (
+            supabase.table("productos")
+            .select("precio")
+            .eq("id", item.producto_id)
+            .single()
             .execute()
+        )
 
         producto = producto_res.data
 
         if not producto:
             raise HTTPException(
                 status_code=404,
-                detail=f"Producto {item.producto_id} no encontrado"
+                detail=f"Producto {item.producto_id} no encontrado",
             )
 
         precio = producto["precio"]
-        total += precio * item.cantidad
+        total += float(precio) * item.cantidad
 
-        items_guardar.append({
-            "producto_id": item.producto_id,
-            "cantidad": item.cantidad,
-            "precio_unitario": precio
-        })
+        items_guardar.append(
+            {
+                "producto_id": item.producto_id,
+                "cantidad": item.cantidad,
+                "precio_unitario": precio,
+            }
+        )
 
-    pedido_db = supabase.table("pedidos").insert({
-        "kiosco_id": kiosco_id,
-        "cliente": pedido.cliente,
-        "telefono": pedido.telefono,
-        "metodo_pago": pedido.metodo_pago,
-        "estado": pedido.estado,
-        "descuento": pedido.descuento,
-        "total": total,
-        "created_at": datetime.utcnow().isoformat()
-    }).execute()
+    pedido_db = (
+        supabase.table("pedidos")
+        .insert(
+            {
+                "kiosco_id": kiosco_id,
+                "cliente": pedido.cliente,
+                "telefono": pedido.telefono,
+                "metodo_pago": pedido.metodo_pago,
+                "estado": pedido.estado,
+                "descuento": pedido.descuento,
+                "total": total,
+                "created_at": datetime.utcnow().isoformat(),
+            }
+        )
+        .execute()
+    )
 
     if not pedido_db.data:
         raise HTTPException(status_code=500, detail="Error al crear pedido")
@@ -208,7 +230,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     return {
         "message": "Pedido creado",
         "total": total,
-        "pedido_id": pedido_id
+        "pedido_id": pedido_id,
     }
 
 # =====================
@@ -218,37 +240,41 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
 def obtener_estadisticas_diarias(fecha: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    res = supabase.table("pedidos") \
-        .select("total, metodo_pago") \
-        .eq("kiosco_id", kiosco_id) \
-        .gte("created_at", f"{fecha}T00:00:00") \
-        .lte("created_at", f"{fecha}T23:59:59") \
+    res = (
+        supabase.table("pedidos")
+        .select("total, metodo_pago")
+        .eq("kiosco_id", kiosco_id)
+        .gte("created_at", f"{fecha}T00:00:00")
+        .lte("created_at", f"{fecha}T23:59:59")
         .execute()
+    )
 
     pedidos = res.data or []
 
-    total_ventas = sum(p["total"] for p in pedidos)
+    total_ventas = sum(float(p["total"]) for p in pedidos)
 
-    metodos = {}
+    metodos: dict[str, float] = {}
     for p in pedidos:
         metodo = p["metodo_pago"]
-        metodos[metodo] = metodos.get(metodo, 0) + p["total"]
+        metodos[metodo] = metodos.get(metodo, 0) + float(p["total"])
 
     return {
         "fecha": fecha,
         "total_ventas": total_ventas,
         "cantidad_pedidos": len(pedidos),
-        "metodos_pago": metodos
+        "metodos_pago": metodos,
     }
 
 @app.get("/dashboard/productos-bajo-stock")
 def productos_bajo_stock(token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    res = supabase.table("productos") \
-        .select("*") \
-        .eq("kiosco_id", kiosco_id) \
-        .lt("stock", 5) \
+    res = (
+        supabase.table("productos")
+        .select("*")
+        .eq("kiosco_id", kiosco_id)
+        .lt("stock", 5)
         .execute()
+    )
 
     return res.data or []
