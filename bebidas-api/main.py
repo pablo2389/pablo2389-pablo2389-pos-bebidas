@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import jwt
 import uuid
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict
 
 # =====================
 # CONFIGURACIÓN INICIAL
@@ -87,8 +87,29 @@ class PedidoCreate(BaseModel):
     telefono: Optional[str] = ""
     metodo_pago: str
     estado: str = "completado"
-    descuento: float = 0
+    descuento: float = 0   # lo acepta el body, pero no se guarda
     items: List[ItemPedido]
+
+# Productos
+class ProductoBase(BaseModel):
+    nombre: str
+    precio: float
+    stock: int
+    estado: Optional[str] = "activo"
+
+class ProductoCreate(ProductoBase):
+    pass
+
+class ProductoOut(ProductoBase):
+    id: int
+
+# Clientes
+class ClienteBase(BaseModel):
+    nombre: str
+    telefono: Optional[str] = ""
+
+class ClienteOut(ClienteBase):
+    id: int
 
 # =====================
 # RUTAS BÁSICAS
@@ -172,13 +193,15 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
     total = 0.0
-    items_guardar: list[dict] = []
+    items_guardar: List[Dict] = []
 
+    # 1) Validar productos y stock, calcular total
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
-            .select("precio")
+            .select("precio, stock")
             .eq("id", item.producto_id)
+            .eq("kiosco_id", kiosco_id)
             .single()
             .execute()
         )
@@ -191,8 +214,15 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
                 detail=f"Producto {item.producto_id} no encontrado",
             )
 
-        precio = producto["precio"]
-        total += float(precio) * item.cantidad
+        stock_actual = int(producto["stock"])
+        if stock_actual < item.cantidad:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Stock insuficiente para el producto {item.producto_id}",
+            )
+
+        precio = float(producto["precio"])
+        total += precio * item.cantidad
 
         items_guardar.append(
             {
@@ -202,6 +232,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
             }
         )
 
+    # 2) Crear pedido
     pedido_db = (
         supabase.table("pedidos")
         .insert(
@@ -211,7 +242,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
                 "telefono": pedido.telefono,
                 "metodo_pago": pedido.metodo_pago,
                 "estado": pedido.estado,
-                # "descuento": pedido.descuento,  # columna aún no existe en la tabla
+                # "descuento": pedido.descuento,  # NO existe en la tabla
                 "total": total,
                 "created_at": datetime.utcnow().isoformat(),
             }
@@ -224,15 +255,86 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
 
     pedido_id = pedido_db.data[0]["id"]
 
+    # 3) Insertar items
     for item in items_guardar:
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
+
+    # 4) Actualizar stock de cada producto (versión simple lectura + update)
+    for item in pedido.items:
+        producto_res = (
+            supabase.table("productos")
+            .select("stock")
+            .eq("id", item.producto_id)
+            .eq("kiosco_id", kiosco_id)
+            .single()
+            .execute()
+        )
+        producto = producto_res.data
+        if producto:
+            nuevo_stock = int(producto["stock"]) - item.cantidad
+            supabase.table("productos").update(
+                {"stock": nuevo_stock}
+            ).eq("id", item.producto_id).execute()
 
     return {
         "message": "Pedido creado",
         "total": total,
         "pedido_id": pedido_id,
     }
+
+# =====================
+# PRODUCTOS
+# =====================
+@app.get("/productos", response_model=List[ProductoOut])
+def listar_productos(token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    res = (
+        supabase.table("productos")
+        .select("*")
+        .eq("kiosco_id", kiosco_id)
+        .order("id")
+        .execute()
+    )
+
+    return res.data or []
+
+@app.post("/productos", response_model=ProductoOut)
+def crear_producto(data: ProductoCreate, token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    payload = {
+        "kiosco_id": kiosco_id,
+        "nombre": data.nombre,
+        "precio": data.precio,
+        "stock": data.stock,
+        "estado": data.estado,
+    }
+
+    res = supabase.table("productos").insert(payload).execute()
+
+    if not res.data:
+        raise HTTPException(status_code=500, detail="Error al crear producto")
+
+    return res.data[0]
+
+# =====================
+# CLIENTES
+# =====================
+@app.get("/clientes/lista", response_model=List[ClienteOut])
+def listar_clientes(token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    res = (
+        supabase.table("clientes")
+        .select("*")
+        .eq("kiosco_id", kiosco_id)
+        .order("id")
+        .execute()
+    )
+
+    return res.data or []
 
 # =====================
 # ESTADÍSTICAS
@@ -254,7 +356,7 @@ def obtener_estadisticas_diarias(fecha: str, token=Depends(verificar_token)):
 
     total_ventas = sum(float(p["total"]) for p in pedidos)
 
-    metodos: dict[str, float] = {}
+    metodos: Dict[str, float] = {}
     for p in pedidos:
         metodo = p["metodo_pago"]
         metodos[metodo] = metodos.get(metodo, 0) + float(p["total"])
