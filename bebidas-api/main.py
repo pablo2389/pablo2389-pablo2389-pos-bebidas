@@ -195,7 +195,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     total = 0.0
     items_guardar: List[Dict] = []
 
-    # Validar productos y stock, calcular total
+    # Validar productos y calcular total (sin bloquear por stock)
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
@@ -214,12 +214,13 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
                 detail=f"Producto {item.producto_id} no encontrado",
             )
 
-        stock_actual = int(producto["stock"])
-        if stock_actual < item.cantidad:
-            raise HTTPException(
-                status_code=400,
-                detail=f"Stock insuficiente para el producto {item.producto_id}",
-            )
+        # Para demo: no bloqueamos por stock insuficiente
+        # stock_actual = int(producto["stock"]) if producto["stock"] is not None else 0
+        # if stock_actual < item.cantidad:
+        #     raise HTTPException(
+        #         status_code=400,
+        #         detail=f"Stock insuficiente para el producto {item.producto_id}",
+        #     )
 
         precio = float(producto["precio"])
         total += precio * item.cantidad
@@ -259,7 +260,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
 
-    # Actualizar stock de cada producto
+    # Actualizar stock de cada producto (lo seguimos descontando)
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
@@ -271,7 +272,8 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         )
         producto = producto_res.data
         if producto is not None:
-            nuevo_stock = int(producto["stock"]) - item.cantidad
+            stock_actual = int(producto["stock"]) if producto["stock"] is not None else 0
+            nuevo_stock = stock_actual - item.cantidad
             supabase.table("productos").update(
                 {"stock": nuevo_stock}
             ).eq("id", item.producto_id).execute()
