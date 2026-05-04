@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { AlertCircle, Eye, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { Eye, Users, AlertCircle } from "lucide-react";
+import { useEffect, useState } from "react";
 import HistorialClienteModal from "../components/HistorialClienteModal";
 
 type Cliente = {
@@ -35,11 +35,14 @@ export default function ClientesPage() {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/lista", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const response = await fetch(
+        "https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/lista",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!response.ok) {
         if (response.status === 401) {
@@ -50,8 +53,16 @@ export default function ClientesPage() {
         throw new Error("Error al cargar clientes");
       }
 
-      const data = await response.json();
-      data.sort((a: Cliente, b: Cliente) => b.deuda_total - a.deuda_total);
+      const raw = await response.json();
+
+      // Adaptamos lo que viene del backend a lo que espera el front
+      const data: Cliente[] = raw.map((c: any) => ({
+        nombre: c.nombre,
+        deuda_total: 0, // por ahora no calculamos deudas
+        compras_total: 0, // ni cantidad de compras
+      }));
+
+      data.sort((a, b) => b.deuda_total - a.deuda_total);
       setClientes(data);
     } catch (err: any) {
       setError(err.message);
@@ -73,7 +84,6 @@ export default function ClientesPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-6">
       <div className="max-w-7xl mx-auto">
-
         {/* Header */}
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -104,14 +114,18 @@ export default function ClientesPage() {
         {/* Tarjetas Resumen */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
           <div className="bg-gradient-to-br from-blue-200 to-blue-100 p-6 rounded-2xl shadow-lg border-2 border-blue-300">
-            <p className="text-sm text-gray-700 font-semibold">👥 Total Clientes</p>
+            <p className="text-sm text-gray-700 font-semibold">
+              👥 Total Clientes
+            </p>
             <p className="text-4xl font-bold text-gray-900 mt-2">
               {clientes.length}
             </p>
           </div>
 
           <div className="bg-gradient-to-br from-red-200 to-red-100 p-6 rounded-2xl shadow-lg border-2 border-red-300">
-            <p className="text-sm text-gray-700 font-semibold">💰 Deuda Total</p>
+            <p className="text-sm text-gray-700 font-semibold">
+              💰 Deuda Total
+            </p>
             <p className="text-4xl font-bold text-gray-900 mt-2">
               {new Intl.NumberFormat("es-AR", {
                 style: "currency",
