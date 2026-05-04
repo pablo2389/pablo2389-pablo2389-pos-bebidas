@@ -171,7 +171,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
     total = 0.0
-    items_guardar = []
+    items_guardar: list[dict] = []
 
     for item in pedido.items:
         producto_res = (
@@ -210,7 +210,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
                 "telefono": pedido.telefono,
                 "metodo_pago": pedido.metodo_pago,
                 "estado": pedido.estado,
-                "descuento": pedido.descuento,
+                # "descuento": pedido.descuento,  # columna aún no existe en la tabla
                 "total": total,
                 "created_at": datetime.utcnow().isoformat(),
             }
