@@ -134,6 +134,7 @@ def login(data: Login):
 
     user = res.data[0]
 
+    # Ojo: en producción deberías hashear la contraseña
     if user["password"] != data.password:
         raise HTTPException(status_code=401, detail="Password incorrecto")
 
@@ -169,7 +170,7 @@ def registrar(usuario: UsuarioCreate):
         {
             "email": usuario.email,
             "nombre": usuario.nombre,
-            "password": usuario.password,
+            "password": usuario.password,  # en producción, hasheada
             "rol": "admin",
             "kiosco_id": kiosco_id,
         }
@@ -231,7 +232,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
             }
         )
 
-    # Crear pedido (sin telefono porque la columna no existe)
+    # Crear pedido (sin telefono porque la columna no existe en la tabla)
     pedido_db = (
         supabase.table("pedidos")
         .insert(
@@ -307,7 +308,7 @@ def crear_producto(data: ProductoCreate, token=Depends(verificar_token)):
         "nombre": data.nombre,
         "precio": data.precio,
         "stock": data.stock,
-        "estado": data.estado,
+        # "estado": data.estado,  # columna no existe en la tabla productos
     }
 
     res = supabase.table("productos").insert(payload).execute()
