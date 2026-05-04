@@ -14,6 +14,7 @@ from typing import List
 # CONFIGURACIÓN INICIAL
 # =====================
 load_dotenv()
+
 app = FastAPI(title="API POS Bebidas", version="1.0.0")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
@@ -26,17 +27,21 @@ if not SUPABASE_URL or not SUPABASE_KEY:
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 # =====================
-# CORS (CORREGIDO PARA VERCEL)
+# CORS (CORRECTO)
 # =====================
+origins = [
+    "http://localhost:3000",
+    "https://kiosco-grace.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://kiosco-grace.vercel.app",
-    ],
-allow_credentials=False,
+    allow_origins=origins,
+    allow_credentials=True,  # IMPORTANTE para Authorization header
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 # =====================
 # AUTH & SECURITY
 # =====================
@@ -59,7 +64,7 @@ def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Token inválido")
 
 # =====================
-# MODELOS (PYDANTIC)
+# MODELOS
 # =====================
 class Login(BaseModel):
     email: str
@@ -83,33 +88,52 @@ class PedidoCreate(BaseModel):
     items: List[ItemPedido]
 
 # =====================
-# RUTAS DE AUTENTICACIÓN
+# RUTAS
 # =====================
 @app.get("/")
 def root():
-    return {"status": "API OK", "mendoza_time": datetime.now().isoformat()}
+    return {"status": "API OK", "time": datetime.utcnow().isoformat()}
 
+@app.get("/ping")
+def ping():
+    return {"pong": True}
+
+# =====================
+# AUTH
+# =====================
 @app.post("/auth/login")
 def login(data: Login):
     res = supabase.table("usuarios").select("*").eq("email", data.email).execute()
+
     if not res.data:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
     user = res.data[0]
+
     if user["password"] != data.password:
         raise HTTPException(status_code=401, detail="Password incorrecto")
-    
+
     token = crear_token(user["id"], user["email"], user["rol"], user["kiosco_id"])
-    return {"token": token, "nombre": user["nombre"]}
+
+    return {
+        "token": token,
+        "nombre": user["nombre"]
+    }
 
 @app.post("/auth/registrar")
 def registrar(usuario: UsuarioCreate):
     existe = supabase.table("usuarios").select("id").eq("email", usuario.email).execute()
+
     if existe.data:
         raise HTTPException(status_code=400, detail="Usuario ya existe")
-    
+
     kiosco_id = str(uuid.uuid4())
-    supabase.table("kioscos").insert({"id": kiosco_id, "nombre": f"Kiosco de {usuario.nombre}"}).execute()
-    
+
+    supabase.table("kioscos").insert({
+        "id": kiosco_id,
+        "nombre": f"Kiosco de {usuario.nombre}"
+    }).execute()
+
     res = supabase.table("usuarios").insert({
         "email": usuario.email,
         "nombre": usuario.nombre,
@@ -117,27 +141,44 @@ def registrar(usuario: UsuarioCreate):
         "rol": "admin",
         "kiosco_id": kiosco_id,
     }).execute()
-    
+
     user = res.data[0]
+
     token = crear_token(user["id"], user["email"], "admin", kiosco_id)
-    return {"token": token, "nombre": user["nombre"]}
+
+    return {
+        "token": token,
+        "nombre": user["nombre"]
+    }
 
 # =====================
-# GESTIÓN DE PEDIDOS
+# PEDIDOS
 # =====================
 @app.post("/pedidos")
 def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
+
     total = 0
     items_guardar = []
 
     for item in pedido.items:
-        producto = supabase.table("productos").select("precio").eq("id", item.producto_id).single().execute().data
+        producto_res = supabase.table("productos") \
+            .select("precio") \
+            .eq("id", item.producto_id) \
+            .single() \
+            .execute()
+
+        producto = producto_res.data
+
         if not producto:
-            raise HTTPException(status_code=404, detail=f"Producto {item.producto_id} no encontrado")
+            raise HTTPException(
+                status_code=404,
+                detail=f"Producto {item.producto_id} no encontrado"
+            )
 
         precio = producto["precio"]
-        total += (precio * item.cantidad)
+        total += precio * item.cantidad
+
         items_guardar.append({
             "producto_id": item.producto_id,
             "cantidad": item.cantidad,
@@ -155,19 +196,28 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         "created_at": datetime.utcnow().isoformat()
     }).execute()
 
+    if not pedido_db.data:
+        raise HTTPException(status_code=500, detail="Error al crear pedido")
+
     pedido_id = pedido_db.data[0]["id"]
+
     for item in items_guardar:
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
 
-    return {"message": "Pedido creado", "total": total, "pedido_id": pedido_id}
+    return {
+        "message": "Pedido creado",
+        "total": total,
+        "pedido_id": pedido_id
+    }
 
 # =====================
-# DASHBOARD & ESTADÍSTICAS
+# ESTADÍSTICAS
 # =====================
 @app.get("/estadisticas/diarias")
 def obtener_estadisticas_diarias(fecha: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
+
     res = supabase.table("pedidos") \
         .select("total, metodo_pago") \
         .eq("kiosco_id", kiosco_id) \
@@ -176,46 +226,29 @@ def obtener_estadisticas_diarias(fecha: str, token=Depends(verificar_token)):
         .execute()
 
     pedidos = res.data or []
+
     total_ventas = sum(p["total"] for p in pedidos)
+
     metodos = {}
     for p in pedidos:
-        m = p["metodo_pago"]
-        metodos[m] = metodos.get(m, 0) + p["total"]
+        metodo = p["metodo_pago"]
+        metodos[metodo] = metodos.get(metodo, 0) + p["total"]
 
     return {
         "fecha": fecha,
         "total_ventas": total_ventas,
         "cantidad_pedidos": len(pedidos),
-        "cantidad_items": len(pedidos), # Podés sumar cantidades reales de pedido_items después
         "metodos_pago": metodos
     }
-
-@app.get("/estadisticas/top-productos")
-def top_productos(limite: int = 5, dias: int = 30, token=Depends(verificar_token)):
-    # Nota: Esta es una versión simplificada. Para datos exactos por kiosco_id 
-    # se recomienda usar una función RPC en Supabase.
-    res = supabase.table("pedido_items").select("cantidad, productos(nombre)").execute()
-    
-    conteo = {}
-    for item in res.data:
-        nombre = item["productos"]["nombre"]
-        conteo[nombre] = conteo.get(nombre, 0) + item["cantidad"]
-    
-    resultado = [
-        {"nombre": k, "cantidad_vendida": v} 
-        for k, v in sorted(conteo.items(), key=lambda x: x[1], reverse=True)[:limite]
-    ]
-    return resultado
 
 @app.get("/dashboard/productos-bajo-stock")
 def productos_bajo_stock(token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
-    res = supabase.table("productos").select("*").eq("kiosco_id", kiosco_id).lt("stock", 5).execute()
-    return res.data or []
 
-# =====================
-# UTILIDADES
-# =====================
-@app.get("/ping")
-def ping():
-    return {"pong": True}
+    res = supabase.table("productos") \
+        .select("*") \
+        .eq("kiosco_id", kiosco_id) \
+        .lt("stock", 5) \
+        .execute()
+
+    return res.data or []
