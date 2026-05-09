@@ -92,7 +92,7 @@ class PedidoCreate(BaseModel):
     cliente: str
     telefono: Optional[str] = ""
     metodo_pago: str
-    estado: str = "completado"
+    estado: str = "completado"  # o "pendiente" si es fiado
     descuento: float = 0  # no se persiste en la tabla
     items: List[ItemPedido]
 
@@ -211,7 +211,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     total = 0.0
     items_guardar: List[Dict] = []
 
-    # Validar productos y calcular total (sin bloquear por stock)
+    # Validar productos y calcular total
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
@@ -241,7 +241,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
             }
         )
 
-    # Crear pedido (sin telefono porque la columna no existe en la tabla)
+    # Crear pedido
     pedido_db = (
         supabase.table("pedidos")
         .insert(
@@ -264,12 +264,10 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     pedido_id = pedido_db.data[0]["id"]
 
     # --- CLIENTE AUTOCREADO ---
-    # Si el nombre de cliente viene no vacío, aseguramos que exista en la tabla `clientes`
     nombre_cliente = (pedido.cliente or "").strip()
     telefono_cliente = (pedido.telefono or "").strip()
 
     if nombre_cliente:
-        # ¿Ya existe este cliente para este kiosco?
         cli_res = (
             supabase.table("clientes")
             .select("id")
@@ -279,7 +277,6 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         )
 
         if not cli_res.data:
-            # No existe: lo creamos
             supabase.table("clientes").insert(
                 {
                     "kiosco_id": kiosco_id,
@@ -294,7 +291,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
 
-    # Actualizar stock de cada producto (lo seguimos descontando)
+    # Actualizar stock
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
@@ -346,7 +343,6 @@ def crear_producto(data: ProductoCreate, token=Depends(verificar_token)):
         "nombre": data.nombre,
         "precio": data.precio,
         "stock": data.stock,
-        # "estado": data.estado,  # columna no existe en la tabla productos
     }
 
     res = supabase.table("productos").insert(payload).execute()
@@ -376,22 +372,139 @@ def listar_clientes(token=Depends(verificar_token)):
 
 
 # =====================
-# HISTORIAL POR CLIENTE
+# HISTORIAL POR CLIENTE (para HistorialClienteModal)
 # =====================
 @app.get("/clientes/historial/{nombre_cliente}")
 def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    res = (
+    # Traer pedidos del cliente
+    res_pedidos = (
         supabase.table("pedidos")
-        .select("id, created_at, total, metodo_pago, estado")
+        .select("id, total, metodo_pago, estado, created_at")
         .eq("kiosco_id", kiosco_id)
         .eq("cliente", nombre_cliente)
         .order("created_at", desc=True)
         .execute()
     )
 
-    return res.data or []
+    pedidos = res_pedidos.data or []
+
+    if not pedidos:
+        return {
+            "nombre_cliente": nombre_cliente,
+            "total_deuda": 0,
+            "total_pagado": 0,
+            "ultima_compra_fecha": None,
+            "ultima_compra_monto": 0,
+            "estado_cuenta": "al_dia",
+            "cantidad_compras": 0,
+            "historial_compras": [],
+        }
+
+    # Calcular totales
+    total_deuda = 0.0
+    total_pagado = 0.0
+
+    historial_compras = []
+
+    for pedido in pedidos:
+        pedido_id = pedido["id"]
+        total = float(pedido["total"])
+        metodo_pago = pedido["metodo_pago"]
+        estado = pedido["estado"]
+
+        # Consideramos fiado/pendiente como deuda
+        if metodo_pago == "fiado" or estado == "pendiente":
+            total_deuda += total
+        else:
+            total_pagado += total
+
+        # Traer items del pedido
+        res_items = (
+            supabase.table("pedido_items")
+            .select("producto_id, cantidad, precio_unitario, productos(nombre)")
+            .eq("pedido_id", pedido_id)
+            .execute()
+        )
+
+        items = res_items.data or []
+
+        productos = []
+        for it in items:
+            # si usás relación RPC/foreign keys, ajustá el acceso a nombre
+            nombre_prod = it.get("productos", {}).get("nombre") if isinstance(it.get("productos"), dict) else None
+            productos.append(
+                {
+                    "nombre": nombre_prod or "Producto",
+                    "cantidad": it["cantidad"],
+                    "precio_unitario": float(it["precio_unitario"]),
+                    "subtotal": float(it["precio_unitario"]) * it["cantidad"],
+                }
+            )
+
+        historial_compras.append(
+            {
+                "pedido_id": pedido_id,
+                "numero_ticket": pedido_id,  # si tenés otra columna para ticket, úsala aquí
+                "fecha": pedido["created_at"],
+                "total": total,
+                "metodo_pago": metodo_pago,
+                "estado": estado,
+                "productos": productos,
+            }
+        )
+
+    ultima_compra = pedidos[0]
+    ultima_compra_fecha = ultima_compra["created_at"]
+    ultima_compra_monto = float(ultima_compra["total"])
+
+    estado_cuenta = "debe" if total_deuda > 0 else "al_dia"
+
+    return {
+        "nombre_cliente": nombre_cliente,
+        "total_deuda": total_deuda,
+        "total_pagado": total_pagado,
+        "ultima_compra_fecha": ultima_compra_fecha,
+        "ultima_compra_monto": ultima_compra_monto,
+        "estado_cuenta": estado_cuenta,
+        "cantidad_compras": len(pedidos),
+        "historial_compras": historial_compras,
+    }
+
+
+# =====================
+# MARCAR PEDIDO COMO PAGADO
+# =====================
+@app.post("/clientes/marcar-pagado/{pedido_id}")
+def marcar_pedido_pagado(pedido_id: int, token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    # Verificar que el pedido pertenezca al kiosco
+    res = (
+        supabase.table("pedidos")
+        .select("id, metodo_pago, estado")
+        .eq("id", pedido_id)
+        .eq("kiosco_id", kiosco_id)
+        .single()
+        .execute()
+    )
+
+    pedido = res.data
+
+    if not pedido:
+        raise HTTPException(status_code=404, detail="Pedido no encontrado")
+
+    # Actualizar estado y método de pago si querés marcar como pagado
+    supabase.table("pedidos").update(
+        {
+            "estado": "pagado",
+            # si querés cambiar fiado -> efectivo, podés hacerlo acá
+            # "metodo_pago": "efectivo",
+        }
+    ).eq("id", pedido_id).execute()
+
+    return {"message": "Pedido marcado como pagado"}
 
 
 # =====================
@@ -427,6 +540,9 @@ def obtener_estadisticas_diarias(fecha: str, token=Depends(verificar_token)):
     }
 
 
+# =====================
+# DASHBOARD STOCK
+# =====================
 @app.get("/dashboard/productos-bajo-stock")
 def productos_bajo_stock(token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
@@ -440,3 +556,87 @@ def productos_bajo_stock(token=Depends(verificar_token)):
     )
 
     return res.data or []
+
+
+# =====================
+# CAJA / CIERRE DE HOY (para CierreCajaModal)
+# =====================
+@app.get("/caja/cierre-hoy")
+def cierre_caja_hoy(token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    hoy = datetime.utcnow().date().isoformat()
+
+    res_pedidos = (
+        supabase.table("pedidos")
+        .select("id, total, metodo_pago, estado, created_at")
+        .eq("kiosco_id", kiosco_id)
+        .gte("created_at", f"{hoy}T00:00:00")
+        .lte("created_at", f"{hoy}T23:59:59")
+        .execute()
+    )
+
+    pedidos = res_pedidos.data or []
+
+    cantidad_pedidos = len(pedidos)
+
+    total_efectivo = 0.0
+    total_transferencia = 0.0
+    total_mp = 0.0
+    total_fiado = 0.0
+
+    for p in pedidos:
+        total = float(p["total"])
+        mp = p["metodo_pago"]
+
+        if mp == "efectivo":
+            total_efectivo += total
+        elif mp == "transferencia":
+            total_transferencia += total
+        elif mp in ("mp", "mercado_pago", "mercadopago"):
+            total_mp += total
+        elif mp == "fiado":
+            total_fiado += total
+
+    total_vendido = total_efectivo + total_transferencia + total_mp + total_fiado
+
+    # Productos vendidos (por producto)
+    res_items = (
+        supabase.table("pedido_items")
+        .select("producto_id, cantidad, precio_unitario, productos(nombre)")
+        .in_("pedido_id", [p["id"] for p in pedidos] or [-1])
+        .execute()
+    )
+
+    items = res_items.data or []
+
+    productos_map: Dict[int, Dict] = {}
+
+    for it in items:
+        pid = it["producto_id"]
+        nombre_prod = it.get("productos", {}).get("nombre") if isinstance(it.get("productos"), dict) else None
+        cantidad = it["cantidad"]
+        total_item = float(it["precio_unitario"]) * cantidad
+
+        if pid not in productos_map:
+            productos_map[pid] = {
+                "nombre": nombre_prod or "Producto",
+                "cantidad": 0,
+                "total": 0.0,
+            }
+
+        productos_map[pid]["cantidad"] += cantidad
+        productos_map[pid]["total"] += total_item
+
+    productos_vendidos = list(productos_map.values())
+
+    return {
+        "fecha_cierre": hoy,
+        "total_efectivo": total_efectivo,
+        "total_transferencia": total_transferencia,
+        "total_mp": total_mp,
+        "total_fiado": total_fiado,
+        "total_vendido": total_vendido,
+        "cantidad_pedidos": cantidad_pedidos,
+        "productos_vendidos": productos_vendidos,
+    }
