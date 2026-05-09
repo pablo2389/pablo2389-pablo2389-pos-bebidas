@@ -376,6 +376,25 @@ def listar_clientes(token=Depends(verificar_token)):
 
 
 # =====================
+# HISTORIAL POR CLIENTE
+# =====================
+@app.get("/clientes/historial/{nombre_cliente}")
+def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    res = (
+        supabase.table("pedidos")
+        .select("id, created_at, total, metodo_pago, estado")
+        .eq("kiosco_id", kiosco_id)
+        .eq("cliente", nombre_cliente)
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    return res.data or []
+
+
+# =====================
 # ESTADÍSTICAS
 # =====================
 @app.get("/estadisticas/diarias")
