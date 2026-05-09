@@ -23,13 +23,18 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} antialiased`}
     >
-      <body className="bg-slate-100">
+      {/* sin bg-slate-100, dejamos que globals.css mande */}
+      <body>
         {children}
       </body>
     </html>
