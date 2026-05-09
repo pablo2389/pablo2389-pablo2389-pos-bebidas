@@ -7,7 +7,7 @@ interface Producto {
   id: number;
   nombre: string;
   precio: number;
-  stock: number;
+  stock: number | null; // puede venir null desde la API
 }
 
 export default function ProductosPage() {
@@ -69,7 +69,11 @@ export default function ProductosPage() {
     setEditando(producto);
     setNombre(producto.nombre);
     setPrecio(producto.precio.toString());
-    setStock(producto.stock.toString());
+    setStock(
+      producto.stock !== null && producto.stock !== undefined
+        ? producto.stock.toString()
+        : "0"
+    );
     setShowModal(true);
   };
 
@@ -235,7 +239,10 @@ export default function ProductosPage() {
               <div>
                 <p className="text-gray-600 text-sm mb-1">Stock Total</p>
                 <p className="text-3xl font-bold text-green-600">
-                  {productos.reduce((sum, p) => sum + p.stock, 0)}
+                  {productos.reduce(
+                    (sum, p) => sum + (p.stock ?? 0),
+                    0
+                  )}
                 </p>
               </div>
               <div className="text-4xl">📊</div>
@@ -247,7 +254,7 @@ export default function ProductosPage() {
               <div>
                 <p className="text-gray-600 text-sm mb-1">Bajo Stock</p>
                 <p className="text-3xl font-bold text-red-600">
-                  {productos.filter((p) => p.stock <= 10).length}
+                  {productos.filter((p) => (p.stock ?? 0) <= 10).length}
                 </p>
               </div>
               <div className="text-4xl">⚠️</div>
@@ -323,15 +330,15 @@ export default function ProductosPage() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-gray-700">
-                          {producto.stock} unidades
+                          {(producto.stock ?? 0) + " unidades"}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        {producto.stock <= 5 ? (
+                        {(producto.stock ?? 0) <= 5 ? (
                           <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm font-semibold">
                             ⚠️ Crítico
                           </span>
-                        ) : producto.stock <= 10 ? (
+                        ) : (producto.stock ?? 0) <= 10 ? (
                           <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-sm font-semibold">
                             ⚡ Bajo
                           </span>
