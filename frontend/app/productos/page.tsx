@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 interface Producto {
   id: number;
@@ -35,11 +35,14 @@ export default function ProductosPage() {
         return;
       }
 
-      const res = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos", {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch(
+        "https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos",
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!res.ok) {
         throw new Error("Error al cargar productos");
@@ -91,24 +94,30 @@ export default function ProductosPage() {
       let res;
       if (editando) {
         // Actualizar
-        res = await fetch(`https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${editando.id}`, {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(body),
-        });
+        res = await fetch(
+          `https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${editando.id}`,
+          {
+            method: "PUT",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          }
+        );
       } else {
         // Crear
-        res = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(body),
-        });
+        res = await fetch(
+          "https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+            body: JSON.stringify(body),
+          }
+        );
       }
 
       if (!res.ok) {
@@ -128,12 +137,15 @@ export default function ProductosPage() {
     try {
       const token = localStorage.getItem("token");
 
-      const res = await fetch(`https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch(
+        `https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${id}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!res.ok) {
         throw new Error("Error al eliminar producto");
@@ -154,7 +166,9 @@ export default function ProductosPage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center">
-        <div className="text-2xl font-bold text-indigo-600">Cargando productos...</div>
+        <div className="text-2xl font-bold text-indigo-600">
+          Cargando productos...
+        </div>
       </div>
     );
   }
@@ -166,7 +180,9 @@ export default function ProductosPage() {
         <div className="bg-white rounded-2xl shadow-xl p-6 mb-6">
           <div className="flex justify-between items-center">
             <div>
-              <h1 className="text-3xl font-bold text-gray-800 mb-2">📦 Gestión de Productos</h1>
+              <h1 className="text-3xl font-bold text-gray-800 mb-2">
+                📦 Gestión de Productos
+              </h1>
               <p className="text-gray-600">Administra tu inventario completo</p>
             </div>
             <button
@@ -206,7 +222,9 @@ export default function ProductosPage() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-gray-600 text-sm mb-1">Total Productos</p>
-                <p className="text-3xl font-bold text-indigo-600">{productos.length}</p>
+                <p className="text-3xl font-bold text-indigo-600">
+                  {productos.length}
+                </p>
               </div>
               <div className="text-4xl">📦</div>
             </div>
@@ -254,20 +272,29 @@ export default function ProductosPage() {
               <thead className="bg-gradient-to-r from-indigo-600 to-purple-600 text-white">
                 <tr>
                   <th className="px-6 py-4 text-left font-semibold">ID</th>
-                  <th className="px-6 py-4 text-left font-semibold">Producto</th>
+                  <th className="px-6 py-4 text-left font-semibold">
+                    Producto
+                  </th>
                   <th className="px-6 py-4 text-left font-semibold">Precio</th>
                   <th className="px-6 py-4 text-left font-semibold">Stock</th>
                   <th className="px-6 py-4 text-left font-semibold">Estado</th>
-                  <th className="px-6 py-4 text-center font-semibold">Acciones</th>
+                  <th className="px-6 py-4 text-center font-semibold">
+                    Acciones
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {productos.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-6 py-12 text-center text-gray-500">
+                    <td
+                      colSpan={6}
+                      className="px-6 py-12 text-center text-gray-500"
+                    >
                       <div className="text-6xl mb-4">📦</div>
                       <p className="text-xl">No hay productos registrados</p>
-                      <p className="text-sm mt-2">Agregá tu primer producto usando el botón de arriba</p>
+                      <p className="text-sm mt-2">
+                        Agregá tu primer producto usando el botón de arriba
+                      </p>
                     </td>
                   </tr>
                 ) : (
@@ -278,17 +305,26 @@ export default function ProductosPage() {
                         idx % 2 === 0 ? "bg-white" : "bg-gray-50"
                       }`}
                     >
-                      <td className="px-6 py-4 font-medium text-gray-700">{producto.id}</td>
-                      <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-800">{producto.nombre}</div>
+                      <td className="px-6 py-4 font-medium text-gray-700">
+                        {producto.id}
                       </td>
                       <td className="px-6 py-4">
-                        <div className="text-green-600 font-bold">
-                          $ {producto.precio.toLocaleString("es-AR", { minimumFractionDigits: 2 })}
+                        <div className="font-semibold text-gray-800">
+                          {producto.nombre}
                         </div>
                       </td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-gray-700">{producto.stock} unidades</div>
+                        <div className="text-green-600 font-bold">
+                          $
+                          {producto.precio.toLocaleString("es-AR", {
+                            minimumFractionDigits: 2,
+                          })}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="font-semibold text-gray-700">
+                          {producto.stock} unidades
+                        </div>
                       </td>
                       <td className="px-6 py-4">
                         {producto.stock <= 5 ? (
