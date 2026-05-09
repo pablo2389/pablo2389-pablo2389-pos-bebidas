@@ -48,6 +48,7 @@ app.add_middleware(
 # =====================
 security = HTTPBearer()
 
+
 def crear_token(user_id, email, rol, kiosco_id):
     payload = {
         "user_id": user_id,
@@ -58,6 +59,7 @@ def crear_token(user_id, email, rol, kiosco_id):
     }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
 
+
 def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
     try:
         return jwt.decode(token.credentials, SECRET_KEY, algorithms=["HS256"])
@@ -66,6 +68,7 @@ def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
+
 # =====================
 # MODELOS
 # =====================
@@ -73,43 +76,52 @@ class Login(BaseModel):
     email: str
     password: str
 
+
 class UsuarioCreate(BaseModel):
     email: str
     nombre: str
     password: str
 
+
 class ItemPedido(BaseModel):
     producto_id: int
     cantidad: int
+
 
 class PedidoCreate(BaseModel):
     cliente: str
     telefono: Optional[str] = ""
     metodo_pago: str
     estado: str = "completado"
-    descuento: float = 0   # no se persiste en la tabla
+    descuento: float = 0  # no se persiste en la tabla
     items: List[ItemPedido]
+
 
 # Productos
 class ProductoBase(BaseModel):
     nombre: str
     precio: float
-    stock: Optional[int] = 0   # permite NULL en DB
+    stock: Optional[int] = 0  # permite NULL en DB
     estado: Optional[str] = "activo"
+
 
 class ProductoCreate(ProductoBase):
     pass
 
+
 class ProductoOut(ProductoBase):
     id: int
+
 
 # Clientes
 class ClienteBase(BaseModel):
     nombre: str
     telefono: Optional[str] = ""
 
+
 class ClienteOut(ClienteBase):
     id: int
+
 
 # =====================
 # RUTAS BÁSICAS
@@ -118,9 +130,11 @@ class ClienteOut(ClienteBase):
 def root():
     return {"status": "API OK", "time": datetime.utcnow().isoformat()}
 
+
 @app.get("/ping")
 def ping():
     return {"pong": True}
+
 
 # =====================
 # AUTH
@@ -144,6 +158,7 @@ def login(data: Login):
         "token": token,
         "nombre": user["nombre"],
     }
+
 
 @app.post("/auth/registrar")
 def registrar(usuario: UsuarioCreate):
@@ -185,6 +200,7 @@ def registrar(usuario: UsuarioCreate):
         "nombre": user["nombre"],
     }
 
+
 # =====================
 # PEDIDOS
 # =====================
@@ -213,14 +229,6 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
                 status_code=404,
                 detail=f"Producto {item.producto_id} no encontrado",
             )
-
-        # Para demo: no bloqueamos por stock insuficiente
-        # stock_actual = int(producto["stock"]) if producto["stock"] is not None else 0
-        # if stock_actual < item.cantidad:
-        #     raise HTTPException(
-        #         status_code=400,
-        #         detail=f"Stock insuficiente para el producto {item.producto_id}",
-        #     )
 
         precio = float(producto["precio"])
         total += precio * item.cantidad
@@ -255,6 +263,32 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
 
     pedido_id = pedido_db.data[0]["id"]
 
+    # --- CLIENTE AUTOCREADO ---
+    # Si el nombre de cliente viene no vacío, aseguramos que exista en la tabla `clientes`
+    nombre_cliente = (pedido.cliente or "").strip()
+    telefono_cliente = (pedido.telefono or "").strip()
+
+    if nombre_cliente:
+        # ¿Ya existe este cliente para este kiosco?
+        cli_res = (
+            supabase.table("clientes")
+            .select("id")
+            .eq("kiosco_id", kiosco_id)
+            .eq("nombre", nombre_cliente)
+            .execute()
+        )
+
+        if not cli_res.data:
+            # No existe: lo creamos
+            supabase.table("clientes").insert(
+                {
+                    "kiosco_id": kiosco_id,
+                    "nombre": nombre_cliente,
+                    "telefono": telefono_cliente,
+                }
+            ).execute()
+    # --- FIN CLIENTE AUTOCREADO ---
+
     # Insertar items
     for item in items_guardar:
         item["pedido_id"] = pedido_id
@@ -284,6 +318,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         "pedido_id": pedido_id,
     }
 
+
 # =====================
 # PRODUCTOS
 # =====================
@@ -300,6 +335,7 @@ def listar_productos(token=Depends(verificar_token)):
     )
 
     return res.data or []
+
 
 @app.post("/productos", response_model=ProductoOut)
 def crear_producto(data: ProductoCreate, token=Depends(verificar_token)):
@@ -320,6 +356,7 @@ def crear_producto(data: ProductoCreate, token=Depends(verificar_token)):
 
     return res.data[0]
 
+
 # =====================
 # CLIENTES
 # =====================
@@ -336,6 +373,7 @@ def listar_clientes(token=Depends(verificar_token)):
     )
 
     return res.data or []
+
 
 # =====================
 # ESTADÍSTICAS
@@ -368,6 +406,7 @@ def obtener_estadisticas_diarias(fecha: str, token=Depends(verificar_token)):
         "cantidad_pedidos": len(pedidos),
         "metodos_pago": metodos,
     }
+
 
 @app.get("/dashboard/productos-bajo-stock")
 def productos_bajo_stock(token=Depends(verificar_token)):

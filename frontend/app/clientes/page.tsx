@@ -62,16 +62,20 @@ export default function ClientesPage() {
       console.log("RAW clientes desde API:", raw);
 
       // Adaptamos lo que viene del backend a lo que espera el front
-      const data: Cliente[] = raw.map((c: any) => ({
+      const data: Cliente[] = (raw as any[]).map((c: any) => ({
         nombre: c.nombre,
-        deuda_total: 0, // por ahora no calculamos deudas
-        compras_total: 0, // ni cantidad de compras
+        // Por ahora no calculamos deudas ni cantidad de compras:
+        // solo mostramos la lista de nombres que existan en la tabla `clientes`
+        deuda_total: 0,
+        compras_total: 0,
       }));
 
+      // Ordenar por deuda (aunque hoy todas son 0, no rompe nada)
       data.sort((a, b) => b.deuda_total - a.deuda_total);
+
       setClientes(data);
     } catch (err: any) {
-      setError(err.message);
+      setError(err.message ?? "Error inesperado al cargar clientes");
     } finally {
       setLoading(false);
     }
@@ -98,7 +102,7 @@ export default function ClientesPage() {
               Clientes
             </h1>
             <p className="text-gray-600 mt-1">
-              Gestión de clientes y control de deudas
+              Gestión básica de clientes (lista desde la tabla de clientes)
             </p>
           </div>
           <div className="flex gap-3">
@@ -113,6 +117,12 @@ export default function ClientesPage() {
               className="bg-purple-500 hover:bg-purple-600 text-white px-4 py-2 rounded-lg font-bold transition"
             >
               📊 Dashboard
+            </button>
+            <button
+              onClick={cargarClientes}
+              className="bg-gray-200 hover:bg-gray-300 text-gray-800 px-4 py-2 rounded-lg font-bold transition"
+            >
+              🔄 Recargar
             </button>
           </div>
         </div>
@@ -160,9 +170,13 @@ export default function ClientesPage() {
             ⚠️ {error}
           </div>
         ) : clientes.length === 0 ? (
-          <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg text-center">
+          <div className="bg-yellow-100 border-2 border-yellow-400 text-yellow-800 px-4 py-3 rounded-lg text-center space-y-1">
             <AlertCircle size={24} className="inline mr-2" />
-            No hay clientes registrados aún
+            <p>No hay clientes registrados aún.</p>
+            <p className="text-sm text-yellow-900">
+              La lista se llena con los registros de la tabla{" "}
+              <span className="font-semibold">clientes</span> en Supabase.
+            </p>
           </div>
         ) : (
           <div className="bg-white rounded-2xl shadow-lg border-2 border-gray-200 overflow-hidden">
