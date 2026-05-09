@@ -35,6 +35,11 @@ export default function ClientesPage() {
 
     try {
       const token = localStorage.getItem("token");
+      if (!token) {
+        router.push("/login");
+        return;
+      }
+
       const response = await fetch(
         "https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/lista",
         {
@@ -54,6 +59,7 @@ export default function ClientesPage() {
       }
 
       const raw = await response.json();
+      console.log("RAW clientes desde API:", raw);
 
       // Adaptamos lo que viene del backend a lo que espera el front
       const data: Cliente[] = raw.map((c: any) => ({
