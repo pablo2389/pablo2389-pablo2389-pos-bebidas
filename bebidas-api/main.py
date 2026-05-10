@@ -374,9 +374,6 @@ def listar_clientes(token=Depends(verificar_token)):
 # =====================
 # HISTORIAL POR CLIENTE (para HistorialClienteModal)
 # =====================
-from supabase import Client
-# ...
-
 @app.get("/clientes/historial/{nombre_cliente}")
 def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
@@ -419,9 +416,10 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         else:
             total_pagado += total
 
+        # Productos del pedido (con nombre real desde productos)
         res_items = (
             supabase.table("pedido_items")
-            .select("producto_id, cantidad, precio_unitario")
+            .select("producto_id, cantidad, precio_unitario, productos(nombre)")
             .eq("pedido_id", pedido_id)
             .execute()
         )
@@ -434,9 +432,14 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
             cantidad = int(it.get("cantidad") or 0)
             precio_unitario = float(it.get("precio_unitario") or 0)
 
+            prod_rel = it.get("productos") or {}
+            nombre_prod = (
+                prod_rel.get("nombre") if isinstance(prod_rel, dict) else None
+            )
+
             productos.append(
                 {
-                    "nombre": f"Producto #{prod_id}",
+                    "nombre": nombre_prod or f"Producto #{prod_id}",
                     "cantidad": cantidad,
                     "precio_unitario": precio_unitario,
                     "subtotal": precio_unitario * cantidad,
@@ -471,6 +474,8 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         "cantidad_compras": len(pedidos),
         "historial_compras": historial_compras,
     }
+
+
 # =====================
 # MARCAR PEDIDO COMO PAGADO
 # =====================
@@ -612,7 +617,11 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
 
     for it in items:
         pid = it["producto_id"]
-        nombre_prod = it.get("productos", {}).get("nombre") if isinstance(it.get("productos"), dict) else None
+        nombre_prod = (
+            it.get("productos", {}).get("nombre")
+            if isinstance(it.get("productos"), dict)
+            else None
+        )
         cantidad = it["cantidad"]
         total_item = float(it["precio_unitario"]) * cantidad
 
