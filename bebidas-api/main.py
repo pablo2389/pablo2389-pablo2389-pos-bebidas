@@ -381,14 +381,11 @@ from supabase import Client
 def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    # Traer pedidos del cliente (búsqueda case-insensitive)
     res_pedidos = (
         supabase.table("pedidos")
         .select("id, total, metodo_pago, estado, created_at, cliente")
         .eq("kiosco_id", kiosco_id)
-        .ilike("cliente", nombre_cliente)  # <-- cambio aquí: ilike en vez de eq
-        # si querés permitir coincidencias parciales:
-        # .ilike("cliente", f"%{nombre_cliente}%")
+        .ilike("cliente", nombre_cliente)
         .order("created_at", desc=True)
         .execute()
     )

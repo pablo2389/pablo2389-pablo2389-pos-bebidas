@@ -1,7 +1,7 @@
 "use client";
 
+import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
-import { X, Check } from "lucide-react";
 
 type Producto = {
   nombre: string;
@@ -50,6 +50,7 @@ export default function HistorialClienteModal({
     if (isOpen && clienteNombre) {
       cargarHistorial();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, clienteNombre]);
 
   const cargarHistorial = async () => {
@@ -115,6 +116,8 @@ export default function HistorialClienteModal({
 
   if (!isOpen) return null;
 
+  const tieneCompras = !!data && data.cantidad_compras > 0;
+
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-2xl shadow-2xl max-w-5xl w-full max-h-[90vh] overflow-y-auto">
@@ -149,27 +152,43 @@ export default function HistorialClienteModal({
             <>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
                 <div className="bg-gradient-to-br from-red-100 to-red-50 p-6 rounded-xl border-2 border-red-300">
-                  <p className="text-sm text-gray-700 font-semibold">💰 Deuda Total</p>
+                  <p className="text-sm text-gray-700 font-semibold">
+                    💰 Deuda Total
+                  </p>
                   <p className="text-3xl font-bold text-red-700 mt-2">
                     {formatearMoneda(data.total_deuda)}
                   </p>
                 </div>
 
                 <div className="bg-gradient-to-br from-green-100 to-green-50 p-6 rounded-xl border-2 border-green-300">
-                  <p className="text-sm text-gray-700 font-semibold">✅ Pagado</p>
+                  <p className="text-sm text-gray-700 font-semibold">
+                    ✅ Pagado
+                  </p>
                   <p className="text-3xl font-bold text-green-700 mt-2">
                     {formatearMoneda(data.total_pagado)}
                   </p>
                 </div>
 
                 <div className="bg-gradient-to-br from-blue-100 to-blue-50 p-6 rounded-xl border-2 border-blue-300">
-                  <p className="text-sm text-gray-700 font-semibold">📅 Última Compra</p>
-                  <p className="text-lg font-bold text-blue-700 mt-2">
-                    {formatearMoneda(data.ultima_compra_monto)}
+                  <p className="text-sm text-gray-700 font-semibold">
+                    📅 Última Compra
                   </p>
-                  <p className="text-xs text-gray-600 mt-1">
-                    {new Date(data.ultima_compra_fecha).toLocaleDateString("es-AR")}
-                  </p>
+                  {tieneCompras ? (
+                    <>
+                      <p className="text-lg font-bold text-blue-700 mt-2">
+                        {formatearMoneda(data.ultima_compra_monto)}
+                      </p>
+                      <p className="text-xs text-gray-600 mt-1">
+                        {new Date(
+                          data.ultima_compra_fecha
+                        ).toLocaleDateString("es-AR")}
+                      </p>
+                    </>
+                  ) : (
+                    <p className="text-xs text-gray-600 mt-2">
+                      Sin compras registradas
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -182,7 +201,8 @@ export default function HistorialClienteModal({
                   <div
                     key={compra.pedido_id}
                     className={`border-2 rounded-xl p-4 ${
-                      compra.estado === "pendiente" || compra.metodo_pago === "fiado"
+                      compra.estado === "pendiente" ||
+                      compra.metodo_pago === "fiado"
                         ? "bg-orange-50 border-orange-300"
                         : "bg-green-50 border-green-300"
                     }`}
@@ -203,7 +223,8 @@ export default function HistorialClienteModal({
                         <p className="text-sm">
                           <span
                             className={`px-3 py-1 rounded-full font-bold ${
-                              compra.estado === "pendiente" || compra.metodo_pago === "fiado"
+                              compra.estado === "pendiente" ||
+                              compra.metodo_pago === "fiado"
                                 ? "bg-orange-200 text-orange-900"
                                 : "bg-green-200 text-green-900"
                             }`}
@@ -235,7 +256,8 @@ export default function HistorialClienteModal({
                       </ul>
                     </div>
 
-                    {(compra.estado === "pendiente" || compra.metodo_pago === "fiado") && (
+                    {(compra.estado === "pendiente" ||
+                      compra.metodo_pago === "fiado") && (
                       <button
                         onClick={() => marcarComoPagado(compra.pedido_id)}
                         className="w-full bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-lg font-bold transition flex items-center justify-center gap-2"
