@@ -402,11 +402,9 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
             "historial_compras": [],
         }
 
-    # Calcular totales
+    historial_compras = []
     total_deuda = 0.0
     total_pagado = 0.0
-
-    historial_compras = []
 
     for pedido in pedidos:
         pedido_id = pedido["id"]
@@ -420,10 +418,10 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         else:
             total_pagado += total
 
-        # Traer items del pedido
+        # Traer items del pedido sin joins, solo pedido_items
         res_items = (
             supabase.table("pedido_items")
-            .select("producto_id, cantidad, precio_unitario, productos(nombre)")
+            .select("producto_id, cantidad, precio_unitario")
             .eq("pedido_id", pedido_id)
             .execute()
         )
@@ -432,11 +430,9 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
 
         productos = []
         for it in items:
-            # si usás relación RPC/foreign keys, ajustá el acceso a nombre
-            nombre_prod = it.get("productos", {}).get("nombre") if isinstance(it.get("productos"), dict) else None
             productos.append(
                 {
-                    "nombre": nombre_prod or "Producto",
+                    "nombre": f"Producto #{it['producto_id']}",
                     "cantidad": it["cantidad"],
                     "precio_unitario": float(it["precio_unitario"]),
                     "subtotal": float(it["precio_unitario"]) * it["cantidad"],
@@ -446,7 +442,7 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         historial_compras.append(
             {
                 "pedido_id": pedido_id,
-                "numero_ticket": pedido_id,  # si tenés otra columna para ticket, úsala aquí
+                "numero_ticket": pedido_id,  # si tenés otra columna de ticket, cambiala acá
                 "fecha": pedido["created_at"],
                 "total": total,
                 "metodo_pago": metodo_pago,
@@ -471,7 +467,6 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         "cantidad_compras": len(pedidos),
         "historial_compras": historial_compras,
     }
-
 
 # =====================
 # MARCAR PEDIDO COMO PAGADO
