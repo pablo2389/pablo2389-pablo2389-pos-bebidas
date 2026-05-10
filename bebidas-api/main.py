@@ -68,7 +68,6 @@ def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-
 # =====================
 # MODELOS
 # =====================
@@ -416,10 +415,10 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         else:
             total_pagado += total
 
-        # Productos del pedido (con nombre real desde productos)
+        # Productos del pedido (usando relación producto_id(nombre))
         res_items = (
             supabase.table("pedido_items")
-            .select("producto_id, cantidad, precio_unitario, productos(nombre)")
+            .select("producto_id, cantidad, precio_unitario, producto_id(nombre)")
             .eq("pedido_id", pedido_id)
             .execute()
         )
@@ -432,10 +431,9 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
             cantidad = int(it.get("cantidad") or 0)
             precio_unitario = float(it.get("precio_unitario") or 0)
 
-            prod_rel = it.get("productos")
-            nombre_prod = None
-            if isinstance(prod_rel, dict):
-                nombre_prod = prod_rel.get("nombre")
+            # Relación: { producto_id: { nombre: "Gelatina" } }
+            prod_rel = it.get("producto_id")
+            nombre_prod = prod_rel.get("nombre") if isinstance(prod_rel, dict) else None
 
             productos.append(
                 {
@@ -502,7 +500,6 @@ def marcar_pedido_pagado(pedido_id: int, token=Depends(verificar_token)):
     supabase.table("pedidos").update(
         {
             "estado": "pagado",
-            # si querés cambiar fiado -> efectivo, podés hacerlo acá
             # "metodo_pago": "efectivo",
         }
     ).eq("id", pedido_id).execute()
@@ -603,10 +600,10 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
 
     total_vendido = total_efectivo + total_transferencia + total_mp + total_fiado
 
-    # Productos vendidos (por producto)
+    # Productos vendidos (por producto) usando relación producto_id(nombre)
     res_items = (
         supabase.table("pedido_items")
-        .select("producto_id, cantidad, precio_unitario, productos(nombre)")
+        .select("producto_id, cantidad, precio_unitario, producto_id(nombre)")
         .in_("pedido_id", [p["id"] for p in pedidos] or [-1])
         .execute()
     )
@@ -617,10 +614,10 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
 
     for it in items:
         pid = it["producto_id"]
-        prod_rel = it.get("productos")
-        nombre_prod = None
-        if isinstance(prod_rel, dict):
-            nombre_prod = prod_rel.get("nombre")
+
+        # Relación: { producto_id: { nombre: "Gelatina" } }
+        prod_rel = it.get("producto_id")
+        nombre_prod = prod_rel.get("nombre") if isinstance(prod_rel, dict) else None
 
         cantidad = it["cantidad"]
         total_item = float(it["precio_unitario"]) * cantidad
