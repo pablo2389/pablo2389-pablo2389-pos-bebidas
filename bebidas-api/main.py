@@ -432,10 +432,10 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
             cantidad = int(it.get("cantidad") or 0)
             precio_unitario = float(it.get("precio_unitario") or 0)
 
-            prod_rel = it.get("productos") or {}
-            nombre_prod = (
-                prod_rel.get("nombre") if isinstance(prod_rel, dict) else None
-            )
+            prod_rel = it.get("productos")
+            nombre_prod = None
+            if isinstance(prod_rel, dict):
+                nombre_prod = prod_rel.get("nombre")
 
             productos.append(
                 {
@@ -617,11 +617,11 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
 
     for it in items:
         pid = it["producto_id"]
-        nombre_prod = (
-            it.get("productos", {}).get("nombre")
-            if isinstance(it.get("productos"), dict)
-            else None
-        )
+        prod_rel = it.get("productos")
+        nombre_prod = None
+        if isinstance(prod_rel, dict):
+            nombre_prod = prod_rel.get("nombre")
+
         cantidad = it["cantidad"]
         total_item = float(it["precio_unitario"]) * cantidad
 
