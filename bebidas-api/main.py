@@ -10,6 +10,7 @@ import uuid
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 
+
 # =====================
 # CONFIGURACIÓN INICIAL
 # =====================
@@ -25,6 +26,7 @@ if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Faltan SUPABASE_URL o SUPABASE_KEY")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
+
 
 # =====================
 # CORS
@@ -42,6 +44,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # =====================
 # AUTH & SECURITY
@@ -378,11 +381,14 @@ def listar_clientes(token=Depends(verificar_token)):
 def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
+    nombre_cliente = nombre_cliente.strip()
+
+    # Traer solo pedidos de este kiosco y de ese cliente exacto
     res_pedidos = (
         supabase.table("pedidos")
         .select("id, total, metodo_pago, estado, created_at, cliente")
         .eq("kiosco_id", kiosco_id)
-      .eq("cliente", nombre_cliente.strip())
+        .eq("cliente", nombre_cliente)
         .order("created_at", desc=True)
         .execute()
     )
@@ -392,8 +398,8 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
     if not pedidos:
         return {
             "nombre_cliente": nombre_cliente,
-            "total_deuda": 0,
-            "total_pagado": 0,
+            "total_deuda": 0.0,
+            "total_pagado": 0.0,
             "ultima_compra_fecha": None,
             "ultima_compra_monto": None,
             "estado_cuenta": "al_dia",
@@ -405,12 +411,14 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
     total_deuda = 0.0
     total_pagado = 0.0
 
+    # Recorremos cada pedido real del cliente
     for pedido in pedidos:
         pedido_id = int(pedido.get("id"))
         total = float(pedido.get("total") or 0)
         metodo_pago = (pedido.get("metodo_pago") or "").lower()
         estado = (pedido.get("estado") or "").lower()
 
+        # Deuda = fiado o pendiente, Pagado = resto
         if metodo_pago == "fiado" or estado == "pendiente":
             total_deuda += total
         else:
@@ -460,6 +468,7 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
             }
         )
 
+    # La última compra es el primer pedido por created_at desc
     ultima_compra = pedidos[0]
     ultima_compra_fecha = ultima_compra.get("created_at")
     ultima_compra_monto = float(ultima_compra.get("total") or 0)
@@ -651,6 +660,8 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
         "cantidad_pedidos": cantidad_pedidos,
         "productos_vendidos": productos_vendidos,
     }
+
+
 # =====================
 # CAJA / HISTORIAL DIARIO POR FECHA
 # =====================
