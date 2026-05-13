@@ -651,3 +651,108 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
         "cantidad_pedidos": cantidad_pedidos,
         "productos_vendidos": productos_vendidos,
     }
+# =====================
+# CAJA / HISTORIAL DIARIO POR FECHA
+# =====================
+@app.get("/caja/historial-diario")
+def historial_diario(fecha: str, token=Depends(verificar_token)):
+    kiosco_id = token["kiosco_id"]
+
+    # Validar formato fecha (YYYY-MM-DD)
+    try:
+        datetime.strptime(fecha, "%Y-%m-%d")
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Fecha inválida, usar YYYY-MM-DD")
+
+    res_pedidos = (
+        supabase.table("pedidos")
+        .select("id, total, metodo_pago, estado, created_at, cliente")
+        .eq("kiosco_id", kiosco_id)
+        .gte("created_at", f"{fecha}T00:00:00")
+        .lte("created_at", f"{fecha}T23:59:59")
+        .order("created_at", desc=True)
+        .execute()
+    )
+
+    pedidos = res_pedidos.data or []
+
+    # Totales por método de pago
+    total_efectivo = 0.0
+    total_transferencia = 0.0
+    total_mp = 0.0
+    total_fiado = 0.0
+
+    for p in pedidos:
+        total = float(p.get("total") or 0)
+        mp = (p.get("metodo_pago") or "").lower()
+
+        if mp == "efectivo":
+            total_efectivo += total
+        elif mp == "transferencia":
+            total_transferencia += total
+        elif mp in ("mp", "mercado_pago", "mercadopago"):
+            total_mp += total
+        elif mp == "fiado":
+            total_fiado += total
+
+    total_vendido = total_efectivo + total_transferencia + total_mp + total_fiado
+
+    # Productos vendidos en ese día (mismo patrón que cierre_hoy)
+    res_items = (
+        supabase.table("pedido_items")
+        .select(
+            "pedido_id, producto_id, cantidad, precio_unitario, "
+            "pedido_items_producto_fk(nombre)"
+        )
+        .in_("pedido_id", [p["id"] for p in pedidos] or [-1])
+        .execute()
+    )
+
+    items = res_items.data or []
+
+    productos_map: Dict[int, Dict] = {}
+
+    for it in items:
+        pid_prod = it["producto_id"]
+        prod_rel = it.get("pedido_items_producto_fk")
+        nombre_prod = prod_rel.get("nombre") if isinstance(prod_rel, dict) else None
+        cantidad = int(it.get("cantidad") or 0)
+        total_item = float(it.get("precio_unitario") or 0) * cantidad
+
+        if pid_prod not in productos_map:
+            productos_map[pid_prod] = {
+                "nombre": nombre_prod or "Producto",
+                "cantidad": 0,
+                "total": 0.0,
+            }
+
+        productos_map[pid_prod]["cantidad"] += cantidad
+        productos_map[pid_prod]["total"] += total_item
+
+    productos_vendidos = list(productos_map.values())
+
+    # Armar lista de pedidos con fecha y hora exactas
+    historial_pedidos = []
+    for p in pedidos:
+        historial_pedidos.append(
+            {
+                "id": p["id"],
+                "cliente": p.get("cliente"),
+                "total": float(p.get("total") or 0),
+                "metodo_pago": p.get("metodo_pago"),
+                "estado": p.get("estado"),
+                "created_at": p.get("created_at"),  # fecha + hora
+            }
+        )
+
+    return {
+        "fecha": fecha,
+        "total_efectivo": total_efectivo,
+        "total_transferencia": total_transferencia,
+        "total_mp": total_mp,
+        "total_fiado": total_fiado,
+        "total_vendido": total_vendido,
+        "cantidad_pedidos": len(pedidos),
+        "productos_vendidos": productos_vendidos,
+        "historial_pedidos": historial_pedidos,
+    }
