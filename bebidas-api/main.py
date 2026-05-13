@@ -382,7 +382,7 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
         supabase.table("pedidos")
         .select("id, total, metodo_pago, estado, created_at, cliente")
         .eq("kiosco_id", kiosco_id)
-        .ilike("cliente", nombre_cliente)
+      .eq("cliente", nombre_cliente.strip())
         .order("created_at", desc=True)
         .execute()
     )

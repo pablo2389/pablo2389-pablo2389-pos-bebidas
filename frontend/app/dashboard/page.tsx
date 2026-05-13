@@ -12,12 +12,15 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import CierreCajaModal from "../components/CierreCajaModal";
 
+const API = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+
 type DashboardData = {
-  total: number;
+  total_vendido: number;
   cantidad_pedidos: number;
-  por_metodo?: {
-    [key: string]: number;
-  };
+  total_efectivo: number;
+  total_transferencia: number;
+  total_mp: number;
+  total_fiado: number;
 };
 
 type ProductoBajoStock = {
@@ -27,16 +30,48 @@ type ProductoBajoStock = {
   precio: number;
 };
 
-const API = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+type PedidoHistorial = {
+  id: number;
+  cliente: string | null;
+  total: number;
+  metodo_pago: string;
+  estado: string;
+  created_at: string;
+};
+
+type HistorialDiarioData = {
+  fecha: string;
+  total_vendido: number;
+  total_efectivo: number;
+  total_transferencia: number;
+  total_mp: number;
+  total_fiado: number;
+  cantidad_pedidos: number;
+  historial_pedidos: PedidoHistorial[];
+};
 
 export default function DashboardPage() {
   const router = useRouter();
 
   const [data, setData] = useState<DashboardData | null>(null);
-  const [productosBajoStock, setProductosBajoStock] = useState<ProductoBajoStock[]>([]);
+  const [productosBajoStock, setProductosBajoStock] = useState<
+    ProductoBajoStock[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [modalCierreOpen, setModalCierreOpen] = useState(false);
+
+  // Historial diario
+  const [fechaHistorial, setFechaHistorial] = useState<string>(() => {
+    const hoy = new Date();
+    const yyyy = hoy.getFullYear();
+    const mm = String(hoy.getMonth() + 1).padStart(2, "0");
+    const dd = String(hoy.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
+  });
+  const [historial, setHistorial] = useState<HistorialDiarioData | null>(null);
+  const [loadingHist, setLoadingHist] = useState(false);
+  const [errorHist, setErrorHist] = useState<string | null>(null);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -56,10 +91,8 @@ export default function DashboardPage() {
     try {
       const token = localStorage.getItem("token");
 
-      // ===== CAJA =====
-      const hoy = new Date().toISOString().split("T")[0];
-
-const resCaja = await fetch(`${API}/estadisticas/diarias?fecha=${hoy}`, {
+      // ===== CAJA HOY =====
+      const resCaja = await fetch(`${API}/caja/cierre-hoy`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -71,11 +104,14 @@ const resCaja = await fetch(`${API}/estadisticas/diarias?fecha=${hoy}`, {
 
       const dataCaja = await resCaja.json();
 
-setData({
-  total: dataCaja.total_ventas,
-  cantidad_pedidos: dataCaja.cantidad_pedidos,
-  por_metodo: dataCaja.metodos_pago,
-});
+      setData({
+        total_vendido: dataCaja.total_vendido || 0,
+        cantidad_pedidos: dataCaja.cantidad_pedidos || 0,
+        total_efectivo: dataCaja.total_efectivo || 0,
+        total_transferencia: dataCaja.total_transferencia || 0,
+        total_mp: dataCaja.total_mp || 0,
+        total_fiado: dataCaja.total_fiado || 0,
+      });
 
       // ===== STOCK =====
       const resStock = await fetch(`${API}/dashboard/productos-bajo-stock`, {
@@ -97,18 +133,50 @@ setData({
     }
   };
 
+  const cargarHistorial = async (fechaStr: string) => {
+    try {
+      setLoadingHist(true);
+      setErrorHist(null);
+      const token = localStorage.getItem("token");
+      if (!token) {
+        setErrorHist("Sin token");
+        return;
+      }
+
+      const res = await fetch(`${API}/caja/historial-diario?fecha=${fechaStr}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const msg = await res.text();
+        throw new Error(msg || `Error ${res.status}`);
+      }
+
+      const json = (await res.json()) as HistorialDiarioData;
+      setHistorial(json);
+    } catch (e: any) {
+      console.error(e);
+      setErrorHist(e.message || "Error al cargar historial");
+    } finally {
+      setLoadingHist(false);
+    }
+  };
+
+  useEffect(() => {
+    cargarHistorial(fechaHistorial);
+  }, [fechaHistorial]);
+
   const formatearMoneda = (monto: number) =>
     new Intl.NumberFormat("es-AR", {
       style: "currency",
       currency: "ARS",
     }).format(monto || 0);
 
-  const porMetodo = data?.por_metodo ?? {};
-
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto w-full">
-
         {/* HEADER */}
         <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-6">
           <div>
@@ -160,16 +228,15 @@ setData({
         {/* DATA */}
         {data && !loading && (
           <>
-            {/* CARDS */}
+            {/* CARDS CAJA HOY */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-
               <div className="bg-white p-4 rounded-xl shadow border">
                 <div className="flex items-center gap-3">
                   <DollarSign className="text-green-600" />
                   <div>
                     <p className="text-sm text-gray-500">Total del día</p>
                     <p className="text-2xl font-bold">
-                      {formatearMoneda(data.total)}
+                      {formatearMoneda(data.total_vendido)}
                     </p>
                   </div>
                 </div>
@@ -186,23 +253,154 @@ setData({
                   </div>
                 </div>
               </div>
-
             </div>
 
-            {/* METODOS */}
+            {/* METODOS PAGO HOY */}
             <div className="bg-white p-4 rounded-xl shadow mb-6">
-              <h2 className="font-bold mb-4">Métodos de pago</h2>
+              <h2 className="font-bold mb-4">Métodos de pago (hoy)</h2>
 
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                {Object.entries(porMetodo).map(([metodo, monto]) => (
-                  <div key={metodo} className="bg-gray-50 p-3 rounded-lg border">
-                    <p className="text-xs uppercase">{metodo}</p>
-                    <p className="font-bold">
-                      {formatearMoneda(monto)}
-                    </p>
-                  </div>
-                ))}
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-xs uppercase">Efectivo</p>
+                  <p className="font-bold">
+                    {formatearMoneda(data.total_efectivo)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-xs uppercase">Transferencia</p>
+                  <p className="font-bold">
+                    {formatearMoneda(data.total_transferencia)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-xs uppercase">Mercado Pago</p>
+                  <p className="font-bold">
+                    {formatearMoneda(data.total_mp)}
+                  </p>
+                </div>
+                <div className="bg-gray-50 p-3 rounded-lg border">
+                  <p className="text-xs uppercase">Fiado</p>
+                  <p className="font-bold">
+                    {formatearMoneda(data.total_fiado)}
+                  </p>
+                </div>
               </div>
+            </div>
+
+            {/* HISTORIAL DIARIO */}
+            <div className="bg-white p-4 rounded-xl shadow mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+                <h2 className="font-bold">Historial diario</h2>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Fecha:</span>
+                  <input
+                    type="date"
+                    value={fechaHistorial}
+                    onChange={(e) => setFechaHistorial(e.target.value)}
+                    className="border rounded px-2 py-1 text-sm"
+                  />
+                </div>
+              </div>
+
+              {loadingHist && (
+                <p className="text-sm text-gray-500">
+                  Cargando historial...
+                </p>
+              )}
+              {errorHist && (
+                <p className="text-sm text-red-500 mb-2">⚠ {errorHist}</p>
+              )}
+
+              {historial && (
+                <>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                    <div className="p-2 border rounded bg-gray-50">
+                      <p className="text-xs text-gray-500">Total vendido</p>
+                      <p className="font-semibold">
+                        {formatearMoneda(historial.total_vendido)}
+                      </p>
+                    </div>
+                    <div className="p-2 border rounded bg-gray-50">
+                      <p className="text-xs text-gray-500">Pedidos</p>
+                      <p className="font-semibold">
+                        {historial.cantidad_pedidos}
+                      </p>
+                    </div>
+                    <div className="p-2 border rounded bg-gray-50">
+                      <p className="text-xs text-gray-500">Efectivo</p>
+                      <p className="font-semibold">
+                        {formatearMoneda(historial.total_efectivo)}
+                      </p>
+                    </div>
+                    <div className="p-2 border rounded bg-gray-50">
+                      <p className="text-xs text-gray-500">
+                        Transferencia
+                      </p>
+                      <p className="font-semibold">
+                        {formatearMoneda(
+                          historial.total_transferencia
+                        )}
+                      </p>
+                    </div>
+                  </div>
+
+                  {historial.historial_pedidos.length === 0 ? (
+                    <p className="text-sm text-gray-500">
+                      No hay pedidos en esta fecha.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-full text-xs">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left px-2 py-1">Ticket</th>
+                            <th className="text-left px-2 py-1">Cliente</th>
+                            <th className="text-left px-2 py-1">
+                              Fecha y hora
+                            </th>
+                            <th className="text-right px-2 py-1">Total</th>
+                            <th className="text-left px-2 py-1">Método</th>
+                            <th className="text-left px-2 py-1">Estado</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {historial.historial_pedidos.map((p) => {
+                            const fechaHora = new Date(p.created_at);
+                            const fechaStr =
+                              fechaHora.toLocaleDateString("es-AR");
+                            const horaStr =
+                              fechaHora.toLocaleTimeString("es-AR", {
+                                hour: "2-digit",
+                                minute: "2-digit",
+                              });
+                            return (
+                              <tr
+                                key={p.id}
+                                className="border-b hover:bg-gray-50"
+                              >
+                                <td className="px-2 py-1">#{p.id}</td>
+                                <td className="px-2 py-1">
+                                  {p.cliente || "Sin nombre"}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {fechaStr} {horaStr}
+                                </td>
+                                <td className="px-2 py-1 text-right">
+                                  {formatearMoneda(p.total)}
+                                </td>
+                                <td className="px-2 py-1">
+                                  {p.metodo_pago}
+                                </td>
+                                <td className="px-2 py-1">{p.estado}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
 
             {/* STOCK */}
@@ -215,7 +413,10 @@ setData({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                   {productosBajoStock.map((p) => (
-                    <div key={p.id} className="p-3 border rounded-lg bg-orange-50">
+                    <div
+                      key={p.id}
+                      className="p-3 border rounded-lg bg-orange-50"
+                    >
                       <p className="font-bold">{p.nombre}</p>
                       <p>Stock: {p.stock}</p>
                       <p>${p.precio}</p>
@@ -227,7 +428,6 @@ setData({
 
             {/* ACCIONES */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-
               <button
                 onClick={() => router.push("/clientes")}
                 className="bg-purple-500 text-white p-4 rounded-xl font-bold"
@@ -251,7 +451,6 @@ setData({
                 <DollarSign className="mx-auto mb-1" />
                 Caja
               </button>
-
             </div>
           </>
         )}
