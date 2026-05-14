@@ -207,6 +207,9 @@ def registrar(usuario: UsuarioCreate):
 # =====================
 # PEDIDOS
 # =====================
+# =====================
+# PEDIDOS
+# =====================
 @app.post("/pedidos")
 def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
@@ -260,6 +263,9 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         )
         .execute()
     )
+
+    # IMPORTANTE: el print va acá, en una línea aparte
+    print("DEBUG pedido_db:", pedido_db)
 
     if not pedido_db.data:
         raise HTTPException(status_code=500, detail="Error al crear pedido")
@@ -317,7 +323,6 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         "total": total,
         "pedido_id": pedido_id,
     }
-
 
 # =====================
 # PRODUCTOS
