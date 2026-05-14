@@ -4,6 +4,7 @@ import { useState } from "react";
 import { api } from "../utils/api";
 
 type Item = {
+  producto_id: number;   // NUEVO
   descripcion: string;
   precio: number;
   cantidad: number;
@@ -20,7 +21,14 @@ export default function POSPage() {
   const agregarItem = () => {
     if (!descripcion || precio <= 0 || cantidad <= 0) return;
 
-    setCarrito([...carrito, { descripcion, precio, cantidad }]);
+    const nuevoItem: Item = {
+      producto_id: carrito.length + 1, // PROVISORIO, solo para testear
+      descripcion,
+      precio,
+      cantidad,
+    };
+
+    setCarrito([...carrito, nuevoItem]);
     setDescripcion("");
     setPrecio(0);
     setCantidad(1);
@@ -44,11 +52,11 @@ export default function POSPage() {
       const body = {
         cliente: "Mostrador",
         telefono: "",
-        metodo_pago: "Efectivo",
-        estado: "confirmado",
+        metodo_pago: "efectivo",
+        estado: "completado",
         descuento: 0,
         items: carrito.map((i) => ({
-          producto_id: 1, // por ahora fijo
+          producto_id: i.producto_id,
           cantidad: i.cantidad,
         })),
       };
