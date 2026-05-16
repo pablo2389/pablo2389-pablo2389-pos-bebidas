@@ -214,37 +214,64 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     total = 0.0
     items_guardar: List[Dict] = []
 
-    # Validar productos y calcular total (Indentación Corregida)
+    # 1) Validar/crear productos y calcular total
     for item in pedido.items:
-        producto_res = (
-            supabase.table("productos")
-            .select("precio, stock")
-            .eq("id", item.producto_id)
-            .eq("kiosco_id", kiosco_id)
-            .execute()
-        )
-
-        # Manejar caso sin filas
-        if not producto_res.data:
-            raise HTTPException(
-                status_code=404,
-                detail=f"Producto {item.producto_id} no encontrado",
+        # Si viene producto_id -> usar flujo actual (producto ya existe)
+        if item.producto_id is not None:
+            producto_res = (
+                supabase.table("productos")
+                .select("id, precio, stock")
+                .eq("id", item.producto_id)
+                .eq("kiosco_id", kiosco_id)
+                .execute()
             )
 
-        producto = producto_res.data[0]
+            if not producto_res.data:
+                raise HTTPException(
+                    status_code=404,
+                    detail=f"Producto {item.producto_id} no encontrado",
+                )
 
-        precio = float(producto["precio"])
+            producto = producto_res.data[0]
+            producto_id = producto["id"]
+            precio = float(producto["precio"])
+
+        else:
+            # Si NO viene producto_id -> crear producto al vuelo en Supabase
+            nuevo_prod_res = (
+                supabase.table("productos")
+                .insert(
+                    {
+                        "kiosco_id": kiosco_id,
+                        "nombre": item.descripcion,
+                        "precio": item.precio,
+                        "stock": None,  # o 0 si preferís
+                    }
+                )
+                .execute()
+            )
+
+            if not nuevo_prod_res.data:
+                raise HTTPException(
+                    status_code=500,
+                    detail="No se pudo crear el producto",
+                )
+
+            nuevo_prod = nuevo_prod_res.data[0]
+            producto_id = nuevo_prod["id"]
+            precio = float(nuevo_prod["precio"])
+
         total += precio * item.cantidad
 
         items_guardar.append(
             {
-                "producto_id": item.producto_id,
+                "producto_id": producto_id,
                 "cantidad": item.cantidad,
                 "precio_unitario": precio,
             }
         )
 
-    # Crear pedido
+    # 2) Crear pedido
     pedido_db = (
         supabase.table("pedidos")
         .insert(
@@ -261,7 +288,6 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         .execute()
     )
 
-    # IMPORTANTE: el print va acá, en una línea aparte
     print("DEBUG pedido_db:", pedido_db)
 
     if not pedido_db.data:
@@ -269,7 +295,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
 
     pedido_id = pedido_db.data[0]["id"]
 
-    # --- CLIENTE AUTOCREADO ---
+    # 3) CLIENTE AUTOCREADO (igual que antes)
     nombre_cliente = (pedido.cliente or "").strip()
     telefono_cliente = (pedido.telefono or "").strip()
 
@@ -290,30 +316,30 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
                     "telefono": telefono_cliente,
                 }
             ).execute()
-    # --- FIN CLIENTE AUTOCREADO ---
 
-    # Insertar items
+    # 4) Insertar items
     for item in items_guardar:
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
 
-    # Actualizar stock (Corregido para evitar fallos con .single())
-    for item in pedido.items:
+    # 5) Actualizar stock
+    for item in items_guardar:
         producto_res = (
             supabase.table("productos")
             .select("stock")
-            .eq("id", item.producto_id)
+            .eq("id", item["producto_id"])
             .eq("kiosco_id", kiosco_id)
             .execute()
         )
-        
+
         if producto_res.data:
             producto = producto_res.data[0]
             stock_actual = int(producto["stock"]) if producto["stock"] is not None else 0
-            nuevo_stock = stock_actual - item.cantidad
+            nuevo_stock = stock_actual - item["cantidad"]
+
             supabase.table("productos").update(
                 {"stock": nuevo_stock}
-            ).eq("id", item.producto_id).execute()
+            ).eq("id", item["producto_id"]).execute()
 
     return {
         "message": "Pedido creado",
