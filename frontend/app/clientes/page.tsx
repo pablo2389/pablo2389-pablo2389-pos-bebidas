@@ -63,11 +63,9 @@ export default function ClientesPage() {
 
       // Adaptamos lo que viene del backend a lo que espera el front
       const data: Cliente[] = (raw as any[]).map((c: any) => ({
-        nombre: c.nombre,
-        // Por ahora no calculamos deudas ni cantidad de compras:
-        // solo mostramos la lista de nombres que existan en la tabla `clientes`
-        deuda_total: 0,
-        compras_total: 0,
+       nombre: c.nombre,
+  deuda_total: Number(c.deuda_total ?? 0),
+  compras_total: Number(c.compras_total ?? 0),
       }));
 
       // Ordenar por deuda (aunque hoy todas son 0, no rompe nada)
