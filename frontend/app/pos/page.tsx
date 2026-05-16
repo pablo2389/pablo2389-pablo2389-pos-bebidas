@@ -35,7 +35,8 @@ export default function POSPage() {
       const data: Producto[] = await res.json();
       setProductos(data);
       if (data.length > 0) {
-        setProductoSeleccionadoId(data[0].id); // primer producto por defecto
+        // primer producto por defecto: su ID REAL (por ejemplo 19)
+        setProductoSeleccionadoId(data[0].id);
       }
     } catch (err: any) {
       setError(err.message || "Error al cargar productos");
@@ -49,7 +50,7 @@ export default function POSPage() {
     if (!prod) return;
 
     const nuevoItem: Item = {
-      producto_id: prod.id,
+      producto_id: prod.id,      // <- usa SIEMPRE el id real (19, 20, etc.)
       descripcion: prod.nombre,
       precio: prod.precio,
       cantidad,
