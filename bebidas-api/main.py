@@ -207,9 +207,6 @@ def registrar(usuario: UsuarioCreate):
 # =====================
 # PEDIDOS
 # =====================
-# =====================
-# PEDIDOS
-# =====================
 @app.post("/pedidos")
 def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
@@ -217,24 +214,24 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
     total = 0.0
     items_guardar: List[Dict] = []
 
-    # Validar productos y calcular total
+    # Validar productos y calcular total (Indentación Corregida)
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
             .select("precio, stock")
             .eq("id", item.producto_id)
             .eq("kiosco_id", kiosco_id)
-            .single()
             .execute()
         )
 
-        producto = producto_res.data
-
-        if not producto:
+        # Manejar caso sin filas
+        if not producto_res.data:
             raise HTTPException(
                 status_code=404,
                 detail=f"Producto {item.producto_id} no encontrado",
             )
+
+        producto = producto_res.data[0]
 
         precio = float(producto["precio"])
         total += precio * item.cantidad
@@ -300,18 +297,18 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         item["pedido_id"] = pedido_id
         supabase.table("pedido_items").insert(item).execute()
 
-    # Actualizar stock
+    # Actualizar stock (Corregido para evitar fallos con .single())
     for item in pedido.items:
         producto_res = (
             supabase.table("productos")
             .select("stock")
             .eq("id", item.producto_id)
             .eq("kiosco_id", kiosco_id)
-            .single()
             .execute()
         )
-        producto = producto_res.data
-        if producto is not None:
+        
+        if producto_res.data:
+            producto = producto_res.data[0]
             stock_actual = int(producto["stock"]) if producto["stock"] is not None else 0
             nuevo_stock = stock_actual - item.cantidad
             supabase.table("productos").update(
@@ -323,6 +320,7 @@ def crear_pedido(pedido: PedidoCreate, token=Depends(verificar_token)):
         "total": total,
         "pedido_id": pedido_id,
     }
+
 
 # =====================
 # PRODUCTOS
@@ -402,14 +400,14 @@ def historial_cliente(nombre_cliente: str, token=Depends(verificar_token)):
 
     if not pedidos:
         return {
-            "nombre_cliente": nombre_cliente,
-            "total_deuda": 0.0,
-            "total_pagado": 0.0,
-            "ultima_compra_fecha": None,
-            "ultima_compra_monto": None,
-            "estado_cuenta": "al_dia",
-            "cantidad_compras": 0,
-            "historial_compras": [],
+             "nombre_cliente": nombre_cliente,
+        "total_deuda": 0.0,
+        "total_pagado": 0.0,
+        "ultima_compra_fecha": None,
+        "ultima_compra_monto": None,
+        "estado_cuenta": "al_dia",
+        "cantidad_compras": 0,
+        "historial_compras": [],
         }
 
     historial_compras = []
@@ -505,13 +503,10 @@ def marcar_pedido_pagado(pedido_id: int, token=Depends(verificar_token)):
         .select("id, metodo_pago, estado")
         .eq("id", pedido_id)
         .eq("kiosco_id", kiosco_id)
-        .single()
         .execute()
     )
 
-    pedido = res.data
-
-    if not pedido:
+    if not res.data:
         raise HTTPException(status_code=404, detail="Pedido no encontrado")
 
     # Actualizar estado y método de pago si querés marcar como pagado
@@ -595,7 +590,6 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
     )
 
     pedidos = res_pedidos.data or []
-
     cantidad_pedidos = len(pedidos)
 
     total_efectivo = 0.0
@@ -618,25 +612,25 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
 
     total_vendido = total_efectivo + total_transferencia + total_mp + total_fiado
 
-    # Productos vendidos (por producto) usando relación pedido_items_producto_fk(nombre)
+    # Evitamos romper la consulta in_ si no hay pedidos hoy
+    lista_ids = [p["id"] for p in pedidos] if pedidos else [-1]
+
     res_items = (
         supabase.table("pedido_items")
         .select(
             "producto_id, cantidad, precio_unitario, "
             "pedido_items_producto_fk(nombre)"
         )
-        .in_("pedido_id", [p["id"] for p in pedidos] or [-1])
+        .in_("pedido_id", lista_ids)
         .execute()
     )
 
     items = res_items.data or []
-
     productos_map: Dict[int, Dict] = {}
 
     for it in items:
         pid = it["producto_id"]
 
-        # Relación: { pedido_items_producto_fk: { nombre: "Gelatina" } }
         prod_rel = it.get("pedido_items_producto_fk")
         nombre_prod = prod_rel.get("nombre") if isinstance(prod_rel, dict) else None
 
@@ -674,7 +668,6 @@ def cierre_caja_hoy(token=Depends(verificar_token)):
 def historial_diario(fecha: str, token=Depends(verificar_token)):
     kiosco_id = token["kiosco_id"]
 
-    # Validar formato fecha (YYYY-MM-DD)
     try:
         datetime.strptime(fecha, "%Y-%m-%d")
     except ValueError:
@@ -692,7 +685,6 @@ def historial_diario(fecha: str, token=Depends(verificar_token)):
 
     pedidos = res_pedidos.data or []
 
-    # Totales por método de pago
     total_efectivo = 0.0
     total_transferencia = 0.0
     total_mp = 0.0
@@ -713,19 +705,19 @@ def historial_diario(fecha: str, token=Depends(verificar_token)):
 
     total_vendido = total_efectivo + total_transferencia + total_mp + total_fiado
 
-    # Productos vendidos en ese día (mismo patrón que cierre_hoy)
+    lista_ids = [p["id"] for p in pedidos] if pedidos else [-1]
+
     res_items = (
         supabase.table("pedido_items")
         .select(
             "pedido_id, producto_id, cantidad, precio_unitario, "
             "pedido_items_producto_fk(nombre)"
-        )
-        .in_("pedido_id", [p["id"] for p in pedidos] or [-1])
+            )
+        .in_("pedido_id", lista_ids)
         .execute()
     )
 
     items = res_items.data or []
-
     productos_map: Dict[int, Dict] = {}
 
     for it in items:
@@ -747,7 +739,6 @@ def historial_diario(fecha: str, token=Depends(verificar_token)):
 
     productos_vendidos = list(productos_map.values())
 
-    # Armar lista de pedidos con fecha y hora exactas
     historial_pedidos = []
     for p in pedidos:
         historial_pedidos.append(
@@ -757,7 +748,7 @@ def historial_diario(fecha: str, token=Depends(verificar_token)):
                 "total": float(p.get("total") or 0),
                 "metodo_pago": p.get("metodo_pago"),
                 "estado": p.get("estado"),
-                "created_at": p.get("created_at"),  # fecha + hora
+                "created_at": p.get("created_at"),
             }
         )
 
