@@ -75,17 +75,19 @@ export default function POSPage() {
     setError("");
 
     try {
-      const body = {
-        cliente: "Mostrador",
-        telefono: "",
-        metodo_pago: "efectivo",
-        estado: "completado",
-        descuento: 0,
-        items: carrito.map((i) => ({
-          producto_id: i.producto_id,
-          cantidad: i.cantidad,
-        })),
-      };
+     const body = {
+  cliente: "Mostrador",
+  telefono: "",
+  metodo_pago: "efectivo",
+  estado: "completado",
+  descuento: 0,
+  items: carrito.map((i) => ({
+    producto_id: i.producto_id ?? null,
+    descripcion: i.descripcion,
+    precio: i.precio,
+    cantidad: i.cantidad,
+  })),
+};
 
       await api("/pedidos", {
         method: "POST",
