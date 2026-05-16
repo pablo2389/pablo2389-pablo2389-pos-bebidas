@@ -9,6 +9,9 @@ type ItemCarrito = {
   precioUnitario: number;
 };
 
+// Ajustá este valor al ID REAL del producto genérico en tu tabla `productos`
+const PRODUCTO_LIBRE_ID = 19;
+
 export default function CajaRapida() {
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [descripcion, setDescripcion] = useState("");
@@ -138,23 +141,26 @@ export default function CajaRapida() {
       cliente,
       metodo_pago: metodoPago,
       items: carrito.map((i) => ({
-        producto_id: 1,
+        // antes: producto_id: 1
+        producto_id: PRODUCTO_LIBRE_ID,
         cantidad: i.cantidad,
       })),
     };
 
-    // >>>>>> ACA REUSAMOS EL TOKEN DEL POS GRANDE
     const token = localStorage.getItem("token");
 
     try {
-      const resp = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/pedidos", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(payload),
-      });
+      const resp = await fetch(
+        "https://pablo2389-pablo2389-pos-bebidas.onrender.com/pedidos",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          body: JSON.stringify(payload),
+        }
+      );
 
       if (!resp.ok) {
         const texto = await resp.text();
@@ -173,7 +179,9 @@ export default function CajaRapida() {
       setCliente("");
     } catch (err) {
       console.error(err);
-      alert("No se pudo conectar con el backend (pablo2389-pablo2389-pos-bebidas.onrender.com)");
+      alert(
+        "No se pudo conectar con el backend (pablo2389-pablo2389-pos-bebidas.onrender.com)"
+      );
     }
   };
 
@@ -298,7 +306,9 @@ export default function CajaRapida() {
 
     doc.setFont("helvetica", "bold");
     doc.setFontSize(10);
-    doc.text(`TOTAL: ${formatCurrency(total)}`, 76, y, { align: "right" });
+    doc.text(`TOTAL: ${formatCurrency(total)}`, 76, y, {
+      align: "right",
+    });
 
     y += 8;
     doc.setFontSize(8);
@@ -330,7 +340,7 @@ export default function CajaRapida() {
         </button>
       </header>
 
-     <main className="flex-1 flex flex-col md:flex-row">
+      <main className="flex-1 flex flex-col md:flex-row">
         {/* Alta de ítem */}
         <section className="md:w-1/3 p-4 border-r bg-white flex flex-col gap-3">
           <h2 className="text-lg font-semibold">Agregar ítem</h2>
@@ -381,7 +391,7 @@ export default function CajaRapida() {
         </section>
 
         {/* Carrito */}
-      <section className="md:w-2/3 p-3 flex flex-col bg-slate-50">
+        <section className="md:w-2/3 p-3 flex flex-col bg-slate-50">
           <h2 className="text-lg font-semibold mb-2">Carrito</h2>
 
           {carrito.length === 0 ? (
@@ -536,4 +546,4 @@ export default function CajaRapida() {
       </main>
     </div>
   );
-}// Force rebuild
+}
