@@ -1,36 +1,61 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { api } from "../utils/api";
 
+type Producto = {
+  id: number;
+  nombre: string;
+  precio: number;
+  stock: number | null;
+};
+
 type Item = {
-  producto_id: number;   // NUEVO
+  producto_id: number;
   descripcion: string;
   precio: number;
   cantidad: number;
 };
 
 export default function POSPage() {
-  const [descripcion, setDescripcion] = useState("");
-  const [precio, setPrecio] = useState(0);
+  const [productos, setProductos] = useState<Producto[]>([]);
+  const [productoSeleccionadoId, setProductoSeleccionadoId] = useState<number | null>(null);
   const [cantidad, setCantidad] = useState(1);
   const [carrito, setCarrito] = useState<Item[]>([]);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  useEffect(() => {
+    cargarProductos();
+  }, []);
+
+  const cargarProductos = async () => {
+    try {
+      const res = await api("/productos", { method: "GET" });
+      const data: Producto[] = await res.json();
+      setProductos(data);
+      if (data.length > 0) {
+        setProductoSeleccionadoId(data[0].id); // primer producto por defecto
+      }
+    } catch (err: any) {
+      setError(err.message || "Error al cargar productos");
+    }
+  };
+
   const agregarItem = () => {
-    if (!descripcion || precio <= 0 || cantidad <= 0) return;
+    if (!productoSeleccionadoId || cantidad <= 0) return;
+
+    const prod = productos.find((p) => p.id === productoSeleccionadoId);
+    if (!prod) return;
 
     const nuevoItem: Item = {
-      producto_id: carrito.length + 1, // PROVISORIO, solo para testear
-      descripcion,
-      precio,
+      producto_id: prod.id,
+      descripcion: prod.nombre,
+      precio: prod.precio,
       cantidad,
     };
 
-    setCarrito([...carrito, nuevoItem]);
-    setDescripcion("");
-    setPrecio(0);
+    setCarrito((prev) => [...prev, nuevoItem]);
     setCantidad(1);
   };
 
@@ -91,23 +116,20 @@ export default function POSPage() {
             Agregar ítem
           </h2>
 
-          <input
-            type="text"
-            placeholder="Descripción"
-            value={descripcion}
-            onChange={(e) => setDescripcion(e.target.value)}
-            className="border rounded px-2 py-1 text-sm"
-          />
+          {/* Selector de producto */}
+          <select
+            value={productoSeleccionadoId ?? ""}
+            onChange={(e) => setProductoSeleccionadoId(Number(e.target.value))}
+            className="border rounded px-2 py-1 text-sm w-full"
+          >
+            {productos.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.nombre} - ${p.precio}
+              </option>
+            ))}
+          </select>
 
           <div className="flex flex-col sm:flex-row gap-2">
-            <input
-              type="number"
-              placeholder="Precio"
-              value={precio}
-              onChange={(e) => setPrecio(Number(e.target.value))}
-              className="border rounded px-2 py-1 text-sm"
-            />
-
             <input
               type="number"
               placeholder="Cantidad"
