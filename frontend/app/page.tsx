@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
 
 type ItemCarrito = {
   id: number;
@@ -13,6 +14,8 @@ type ItemCarrito = {
 const PRODUCTO_LIBRE_ID = 19;
 
 export default function CajaRapida() {
+  const router = useRouter();
+
   const [carrito, setCarrito] = useState<ItemCarrito[]>([]);
   const [descripcion, setDescripcion] = useState("");
   const [precio, setPrecio] = useState<string>("");
@@ -21,6 +24,14 @@ export default function CajaRapida() {
   const [metodoPago, setMetodoPago] = useState("efectivo");
   const [ultimoId, setUltimoId] = useState(1);
   const [whatsapp, setWhatsapp] = useState("");
+
+  // Proteger la ruta: si no hay token, ir a login
+  useEffect(() => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      router.push("/login");
+    }
+  }, [router]);
 
   const safeNumber = (v: any): number => {
     const n = Number(v);
@@ -137,6 +148,13 @@ export default function CajaRapida() {
       return;
     }
 
+    const token = localStorage.getItem("token");
+    if (!token) {
+      alert("Tenés que iniciar sesión para registrar la venta.");
+      router.push("/login");
+      return;
+    }
+
     const payload = {
       cliente,
       metodo_pago: metodoPago,
@@ -147,8 +165,6 @@ export default function CajaRapida() {
       })),
     };
 
-    const token = localStorage.getItem("token");
-
     try {
       const resp = await fetch(
         "https://pablo2389-pablo2389-pos-bebidas.onrender.com/pedidos",
@@ -156,7 +172,7 @@ export default function CajaRapida() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+            Authorization: `Bearer ${token}`,
           },
           body: JSON.stringify(payload),
         }
@@ -333,7 +349,7 @@ export default function CajaRapida() {
         </div>
         <button
           type="button"
-          onClick={() => (window.location.href = "/dashboard")}
+          onClick={() => router.push("/dashboard")}
           className="text-sm bg-slate-800 text-white px-3 py-1 rounded"
         >
           Ver dashboard
