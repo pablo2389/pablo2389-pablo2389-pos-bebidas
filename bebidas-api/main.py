@@ -84,9 +84,10 @@ class UsuarioCreate(BaseModel):
 
 
 class ItemPedido(BaseModel):
-    producto_id: int
+    producto_id: Optional[int] = None
+    descripcion: Optional[str] = None
+    precio: Optional[float] = None
     cantidad: int
-
 
 class PedidoCreate(BaseModel):
     cliente: str

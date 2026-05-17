@@ -154,17 +154,19 @@ export default function CajaRapida() {
       router.push("/login");
       return;
     }
-
-    const payload = {
-      cliente,
-      metodo_pago: metodoPago,
-      items: carrito.map((i) => ({
-        // antes: producto_id: 1
-        producto_id: PRODUCTO_LIBRE_ID,
-        cantidad: i.cantidad,
-      })),
-    };
-
+const payload = {
+  cliente,
+  telefono: "",              // opcional, lo dejamos vacío
+  metodo_pago: metodoPago,
+  estado: metodoPago === "fiado" ? "pendiente" : "completado",
+  descuento: 0,
+  items: carrito.map((i) => ({
+    producto_id: null,               // dejamos que el back cree el producto al vuelo
+    descripcion: i.descripcion,      // "atun desmenuzado"
+    precio: i.precioUnitario,        // 2000
+    cantidad: i.cantidad,            // 1, etc.
+  })),
+};
     try {
       const resp = await fetch(
         "https://pablo2389-pablo2389-pos-bebidas.onrender.com/pedidos",
