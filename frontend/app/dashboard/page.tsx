@@ -39,6 +39,12 @@ type PedidoHistorial = {
   created_at: string;
 };
 
+type ProductoVendido = {
+  nombre: string;
+  cantidad: number;
+  total: number;
+};
+
 type HistorialDiarioData = {
   fecha: string;
   total_vendido: number;
@@ -48,6 +54,7 @@ type HistorialDiarioData = {
   total_fiado: number;
   cantidad_pedidos: number;
   historial_pedidos: PedidoHistorial[];
+  productos_vendidos: ProductoVendido[];
 };
 
 export default function DashboardPage() {
@@ -143,11 +150,14 @@ export default function DashboardPage() {
         return;
       }
 
-      const res = await fetch(`${API}/caja/historial-diario?fecha=${fechaStr}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      const res = await fetch(
+        `${API}/caja/historial-diario?fecha=${fechaStr}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (!res.ok) {
         const msg = await res.text();
@@ -337,9 +347,7 @@ export default function DashboardPage() {
                         Transferencia
                       </p>
                       <p className="font-semibold">
-                        {formatearMoneda(
-                          historial.total_transferencia
-                        )}
+                        {formatearMoneda(historial.total_transferencia)}
                       </p>
                     </div>
                   </div>
@@ -399,6 +407,50 @@ export default function DashboardPage() {
                       </table>
                     </div>
                   )}
+
+                  {/* Productos vendidos en el día */}
+                  {historial.productos_vendidos &&
+                    historial.productos_vendidos.length > 0 && (
+                      <div className="mt-4">
+                        <h3 className="font-semibold mb-2 text-sm">
+                          Productos vendidos en el día
+                        </h3>
+                        <div className="overflow-x-auto">
+                          <table className="min-w-full text-xs">
+                            <thead>
+                              <tr className="border-b">
+                                <th className="text-left px-2 py-1">
+                                  Producto
+                                </th>
+                                <th className="text-right px-2 py-1">
+                                  Cantidad
+                                </th>
+                                <th className="text-right px-2 py-1">
+                                  Total
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {historial.productos_vendidos.map(
+                                (prod, i) => (
+                                  <tr key={i} className="border-b">
+                                    <td className="px-2 py-1">
+                                      {prod.nombre}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {prod.cantidad}
+                                    </td>
+                                    <td className="px-2 py-1 text-right">
+                                      {formatearMoneda(prod.total)}
+                                    </td>
+                                  </tr>
+                                )
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+                    )}
                 </>
               )}
             </div>
