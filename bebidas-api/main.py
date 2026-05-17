@@ -49,6 +49,7 @@ app.add_middleware(
 # =====================
 security = HTTPBearer()
 
+
 def crear_token(user_id, email, rol, kiosco_id):
     payload = {
         "user_id": user_id,
@@ -58,6 +59,7 @@ def crear_token(user_id, email, rol, kiosco_id):
         "exp": datetime.utcnow() + timedelta(days=30),
     }
     return jwt.encode(payload, SECRET_KEY, algorithm="HS256")
+
 
 def verificar_token(token: HTTPAuthorizationCredentials = Depends(security)):
     try:
@@ -74,38 +76,48 @@ class Login(BaseModel):
     email: str
     password: str
 
+
 class UsuarioCreate(BaseModel):
     email: str
     nombre: str
     password: str
 
+
 class ItemPedido(BaseModel):
     producto_id: int
     cantidad: int
+
 
 class PedidoCreate(BaseModel):
     cliente: str
     telefono: Optional[str] = ""
     metodo_pago: str
-    estado: str = "completado"
-    descuento: float = 0
+    estado: str = "completado"  # o "pendiente" si es fiado
+    descuento: float = 0        # no se persiste en la tabla
     items: List[ItemPedido]
 
+
+# Productos
 class ProductoBase(BaseModel):
     nombre: str
     precio: float
-    stock: Optional[int] = 0
+    stock: Optional[int] = 0    # permite NULL en DB
     estado: Optional[str] = "activo"
+
 
 class ProductoCreate(ProductoBase):
     pass
 
+
 class ProductoOut(ProductoBase):
     id: int
 
+
+# Clientes
 class ClienteBase(BaseModel):
     nombre: str
     telefono: Optional[str] = ""
+
 
 class ClienteOut(ClienteBase):
     id: int
@@ -117,12 +129,83 @@ class ClienteOut(ClienteBase):
 def root():
     return {"status": "API OK", "time": datetime.utcnow().isoformat()}
 
+
 @app.get("/ping")
 def ping():
     return {"pong": True}
 
 # =====================
-# CLIENTES LISTA (MODIFICADO)
+# AUTH
+# =====================
+@app.post("/auth/login")
+def login(data: Login):
+    res = supabase.table("usuarios").select("*").eq("email", data.email).execute()
+
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Usuario no encontrado")
+
+    user = res.data[0]
+
+    # Ojo: en producción deberías hashear la contraseña
+    if user["password"] != data.password:
+        raise HTTPException(status_code=401, detail="Password incorrecto")
+
+    token = crear_token(user["id"], user["email"], user["rol"], user["kiosco_id"])
+
+    return {
+        "token": token,
+        "nombre": user["nombre"],
+    }
+
+
+@app.post("/auth/registrar")
+def registrar(usuario: UsuarioCreate):
+    existe = (
+        supabase.table("usuarios")
+        .select("id")
+        .eq("email", usuario.email)
+        .execute()
+    )
+
+    if existe.data:
+        raise HTTPException(status_code=400, detail="Usuario ya existe")
+
+    kiosco_id = str(uuid.uuid4())
+
+    supabase.table("kioscos").insert(
+        {
+            "id": kiosco_id,
+            "nombre": f"Kiosco de {usuario.nombre}",
+        }
+    ).execute()
+
+    res = supabase.table("usuarios").insert(
+        {
+            "email": usuario.email,
+            "nombre": usuario.nombre,
+            "password": usuario.password,  # en producción, hasheada
+            "rol": "admin",
+            "kiosco_id": kiosco_id,
+        }
+    ).execute()
+
+    user = res.data[0]
+
+    token = crear_token(user["id"], user["email"], "admin", kiosco_id)
+
+    return {
+        "token": token,
+        "nombre": user["nombre"],
+    }
+
+# =====================
+# PEDIDOS / PRODUCTOS / HISTORIAL / CAJA
+# =====================
+# 👉 Acá pegás todo lo que ya tenías (crear pedido, listar productos,
+# historial, caja, estadísticas, etc.) SIN tocar nada.
+
+# =====================
+# CLIENTES LISTA (NUEVA VERSIÓN CON DEUDA)
 # =====================
 @app.get("/clientes/lista")
 def listar_clientes(token=Depends(verificar_token)):
