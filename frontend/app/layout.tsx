@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "POS Bebidas - Caja Registradora",
+ title: "Kiosco Grace - Caja Registradora",
   description:
     "Interfaz de caja registradora para ventas, carrito y envío de ticket por WhatsApp",
 };
