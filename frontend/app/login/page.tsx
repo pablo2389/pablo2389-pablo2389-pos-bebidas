@@ -63,7 +63,7 @@ export default function Page() {
       localStorage.setItem("token", res.token);
       localStorage.setItem("usuario_nombre", res.nombre || "");
 
-    router.replace("/pos");
+   router.replace("https://kiosco-grace.vercel.app/");
     } catch (err: any) {
       console.error("❌ Error en login:", err);
       setError(err.message || "Error inesperado");
