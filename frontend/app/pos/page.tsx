@@ -19,7 +19,8 @@ type Item = {
 
 export default function POSPage() {
   const [productos, setProductos] = useState<Producto[]>([]);
-  const [productoSeleccionadoId, setProductoSeleccionadoId] = useState<number | null>(null);
+  const [productoSeleccionadoId, setProductoSeleccionadoId] =
+    useState<number | null>(null);
   const [cantidad, setCantidad] = useState(1);
   const [carrito, setCarrito] = useState<Item[]>([]);
   const [error, setError] = useState("");
@@ -31,11 +32,11 @@ export default function POSPage() {
 
   const cargarProductos = async () => {
     try {
-      const res = await api("/productos", { method: "GET" });
-      const data: Producto[] = await res.json();
+      // api ya devuelve el JSON parseado
+      const data: Producto[] = await api("/productos", { method: "GET" });
+
       setProductos(data);
       if (data.length > 0) {
-        // primer producto por defecto: su ID REAL (por ejemplo 19)
         setProductoSeleccionadoId(data[0].id);
       }
     } catch (err: any) {
@@ -50,7 +51,7 @@ export default function POSPage() {
     if (!prod) return;
 
     const nuevoItem: Item = {
-      producto_id: prod.id,      // <- usa SIEMPRE el id real (19, 20, etc.)
+      producto_id: prod.id,
       descripcion: prod.nombre,
       precio: prod.precio,
       cantidad,
@@ -75,19 +76,19 @@ export default function POSPage() {
     setError("");
 
     try {
-     const body = {
-  cliente: "Mostrador",
-  telefono: "",
-  metodo_pago: "efectivo",
-  estado: "completado",
-  descuento: 0,
-  items: carrito.map((i) => ({
-    producto_id: i.producto_id ?? null,
-    descripcion: i.descripcion,
-    precio: i.precio,
-    cantidad: i.cantidad,
-  })),
-};
+      const body = {
+        cliente: "Mostrador",
+        telefono: "",
+        metodo_pago: "efectivo",
+        estado: "completado",
+        descuento: 0,
+        items: carrito.map((i) => ({
+          producto_id: i.producto_id ?? null,
+          descripcion: i.descripcion,
+          precio: i.precio,
+          cantidad: i.cantidad,
+        })),
+      };
 
       await api("/pedidos", {
         method: "POST",
@@ -119,7 +120,6 @@ export default function POSPage() {
             Agregar ítem
           </h2>
 
-          {/* Selector de producto */}
           <select
             value={productoSeleccionadoId ?? ""}
             onChange={(e) => setProductoSeleccionadoId(Number(e.target.value))}
@@ -181,7 +181,6 @@ export default function POSPage() {
             </div>
           )}
 
-          {/* Total + acción */}
           <div className="space-y-2 border-t pt-2">
             <div className="flex justify-between font-bold text-sm">
               <span>Total</span>
