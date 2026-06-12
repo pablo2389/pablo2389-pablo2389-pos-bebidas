@@ -34,12 +34,15 @@ supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 # =====================
 # CORS
 # =====================
-# En deploys transitorios podemos permitir todos los orígenes mientras
-# verificamos que el dominio de Vercel esté correctamente configurado.
-# IMPORTANTE: sustituir por orígenes concretos en producción.
+origins = [
+    "http://localhost:3000",
+    "https://kiosco-grace.vercel.app",
+    "https://pablo2389-pablo2389-pos-bebidas.vercel.app",
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # temporal
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
