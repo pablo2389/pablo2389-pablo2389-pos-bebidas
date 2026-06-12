@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { API_URL } from "./utils/api";
 
 type ItemCarrito = {
   id: number;
@@ -169,7 +170,7 @@ const payload = {
 };
     try {
       const resp = await fetch(
-        "https://pablo2389-pablo2389-pos-bebidas.onrender.com/pedidos",
+        `${API_URL}/pedidos`,
         {
           method: "POST",
           headers: {
@@ -198,7 +199,7 @@ const payload = {
     } catch (err) {
       console.error(err);
       alert(
-        "No se pudo conectar con el backend (pablo2389-pablo2389-pos-bebidas.onrender.com)"
+        "No se pudo conectar con el backend (" + API_URL + ")"
       );
     }
   };

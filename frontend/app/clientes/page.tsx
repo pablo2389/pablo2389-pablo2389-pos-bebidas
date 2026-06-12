@@ -4,6 +4,7 @@ import { AlertCircle, Eye, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import HistorialClienteModal from "../components/HistorialClienteModal";
+import { API_URL } from "../utils/api";
 
 type Cliente = {
   nombre: string;
@@ -41,7 +42,7 @@ export default function ClientesPage() {
       }
 
       const response = await fetch(
-        "https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/lista",
+        `${API_URL}/clientes/lista`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

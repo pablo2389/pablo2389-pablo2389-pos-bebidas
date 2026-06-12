@@ -2,6 +2,7 @@
 
 import { Check, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import { API_URL } from "../utils/api";
 
 type Producto = {
   nombre: string;
@@ -60,7 +61,7 @@ export default function HistorialClienteModal({
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/historial/${encodeURIComponent(
+        `${API_URL}/clientes/historial/${encodeURIComponent(
           clienteNombre
         )}`,
         {
@@ -87,7 +88,7 @@ export default function HistorialClienteModal({
     try {
       const token = localStorage.getItem("token");
       const response = await fetch(
-        `https://pablo2389-pablo2389-pos-bebidas.onrender.com/clientes/marcar-pagado/${pedidoId}`,
+        `${API_URL}/clientes/marcar-pagado/${pedidoId}`,
         {
           method: "POST",
           headers: {

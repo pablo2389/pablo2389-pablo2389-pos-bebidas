@@ -4,7 +4,7 @@ import jsPDF from "jspdf";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
-const API_URL = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
 const api = axios.create({ baseURL: API_URL });
 
 // Interceptor para el token (Importante para que no de error 401)

@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { X, Printer, DollarSign } from "lucide-react";
+import { API_URL } from "../utils/api";
 
 type CierreCajaData = {
   fecha_cierre: string;
@@ -40,7 +41,7 @@ export default function CierreCajaModal({ isOpen, onClose }: Props) {
 
     try {
       const token = localStorage.getItem("token");
-      const response = await fetch("https://pablo2389-pablo2389-pos-bebidas.onrender.com/caja/cierre-hoy", {
+      const response = await fetch(`${API_URL}/caja/cierre-hoy`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

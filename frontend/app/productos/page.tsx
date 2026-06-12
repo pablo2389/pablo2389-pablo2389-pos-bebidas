@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { API_URL } from "../utils/api";
 
 interface Producto {
   id: number;
@@ -36,7 +37,7 @@ export default function ProductosPage() {
       }
 
       const res = await fetch(
-        "https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos",
+        `${API_URL}/productos`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -99,7 +100,7 @@ export default function ProductosPage() {
       if (editando) {
         // Actualizar
         res = await fetch(
-          `https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${editando.id}`,
+          `${API_URL}/productos/${editando.id}`,
           {
             method: "PUT",
             headers: {
@@ -112,7 +113,7 @@ export default function ProductosPage() {
       } else {
         // Crear
         res = await fetch(
-          "https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos",
+          `${API_URL}/productos`,
           {
             method: "POST",
             headers: {
@@ -142,7 +143,7 @@ export default function ProductosPage() {
       const token = localStorage.getItem("token");
 
       const res = await fetch(
-        `https://pablo2389-pablo2389-pos-bebidas.onrender.com/productos/${id}`,
+        `${API_URL}/productos/${id}`,
         {
           method: "DELETE",
           headers: {

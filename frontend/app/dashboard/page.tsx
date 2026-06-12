@@ -11,8 +11,7 @@ import {
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import CierreCajaModal from "../components/CierreCajaModal";
-
-const API = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+import { API_URL } from "../utils/api";
 
 type DashboardData = {
   total_vendido: number;
@@ -99,7 +98,7 @@ export default function DashboardPage() {
       const token = localStorage.getItem("token");
 
       // ===== CAJA HOY =====
-      const resCaja = await fetch(`${API}/caja/cierre-hoy`, {
+      const resCaja = await fetch(`${API_URL}/caja/cierre-hoy`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -121,7 +120,7 @@ export default function DashboardPage() {
       });
 
       // ===== STOCK =====
-      const resStock = await fetch(`${API}/dashboard/productos-bajo-stock`, {
+      const resStock = await fetch(`${API_URL}/dashboard/productos-bajo-stock`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -151,7 +150,7 @@ export default function DashboardPage() {
       }
 
       const res = await fetch(
-        `${API}/caja/historial-diario?fecha=${fechaStr}`,
+        `${API_URL}/caja/historial-diario?fecha=${fechaStr}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

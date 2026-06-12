@@ -1,4 +1,4 @@
-export const API_URL = "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://pablo2389-pablo2389-pos-bebidas.onrender.com";
 
 export async function api(path: string, options: RequestInit = {}) {
   const token =
