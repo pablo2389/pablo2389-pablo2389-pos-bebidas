@@ -7,6 +7,7 @@ import os
 from dotenv import load_dotenv
 import jwt
 import uuid
+import bcrypt
 from pydantic import BaseModel
 from typing import List, Optional, Dict
 from collections import defaultdict
@@ -20,10 +21,13 @@ app = FastAPI(title="API POS Bebidas", version="1.0.0")
 
 SUPABASE_URL = os.getenv("SUPABASE_URL")
 SUPABASE_KEY = os.getenv("SUPABASE_KEY")
-SECRET_KEY = os.getenv("SECRET_KEY", "dev-secret")
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 if not SUPABASE_URL or not SUPABASE_KEY:
     raise Exception("Faltan SUPABASE_URL o SUPABASE_KEY")
+
+if not SECRET_KEY:
+    raise Exception("Falta SECRET_KEY en variables de entorno")
 
 supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
@@ -48,6 +52,23 @@ app.add_middleware(
 # AUTH & SECURITY
 # =====================
 security = HTTPBearer()
+
+
+def hash_password(password: str) -> str:
+    """Hash a password using bcrypt"""
+    salt = bcrypt.gensalt(rounds=12)
+    return bcrypt.hashpw(password.encode("utf-8"), salt).decode("utf-8")
+
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Verify a password against its hash. Handles both new hashes and old plaintext."""
+    try:
+        # Try to verify as bcrypt hash
+        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+    except (ValueError, TypeError):
+        # If bcrypt fails, it might be an old plaintext password
+        # Return True if plaintext matches (for migration)
+        return plain_password == hashed_password
 
 
 def crear_token(user_id, email, rol, kiosco_id):
@@ -147,9 +168,15 @@ def login(data: Login):
 
     user = res.data[0]
 
-    # Ojo: en producción deberías hashear la contraseña
-    if user["password"] != data.password:
+    # Verify password (handles both hashed and plaintext for migration)
+    if not verify_password(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Password incorrecto")
+
+    # Auto-migrate old plaintext passwords to bcrypt hash
+    if user["password"] == data.password:  # Old plaintext detected
+        new_hash = hash_password(data.password)
+        supabase.table("usuarios").update({"password": new_hash}).eq("id", user["id"]).execute()
+        print(f"[SECURITY] Auto-migrated plaintext password for user {user['email']} to bcrypt")
 
     token = crear_token(user["id"], user["email"], user["rol"], user["kiosco_id"])
 
@@ -180,11 +207,13 @@ def registrar(usuario: UsuarioCreate):
         }
     ).execute()
 
+    password_hash = hash_password(usuario.password)
+
     res = supabase.table("usuarios").insert(
         {
             "email": usuario.email,
             "nombre": usuario.nombre,
-            "password": usuario.password,  # en producción, hasheada
+            "password": password_hash,
             "rol": "admin",
             "kiosco_id": kiosco_id,
         }
