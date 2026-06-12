@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { X, Printer, DollarSign } from "lucide-react";
+// Usar emojis en lugar de lucide-react para evitar problemas en producción
 import { API_URL } from "../utils/api";
 
 type CierreCajaData = {
@@ -78,7 +78,7 @@ export default function CierreCajaModal({ isOpen, onClose }: Props) {
       <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
         <div className="sticky top-0 bg-gradient-to-r from-green-500 to-green-600 text-white p-6 rounded-t-2xl flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <DollarSign size={32} />
+            <span className="text-3xl">💵</span>
             <h2 className="text-2xl font-bold">Cierre de Caja</h2>
           </div>
           <button
@@ -189,19 +189,19 @@ export default function CierreCajaModal({ isOpen, onClose }: Props) {
                 </div>
               )}
 
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={imprimir}
-                  className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
-                >
-                  <Printer size={20} />
-                  Imprimir
-                </button>
+                  <div className="flex gap-3 mt-6">
+                    <button
+                      onClick={imprimir}
+                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white px-6 py-3 rounded-lg font-bold transition flex items-center justify-center gap-2"
+                    >
+                      <span className="text-lg">🖨️</span>
+                      Imprimir
+                    </button>
                 <button
                   onClick={onClose}
                   className="flex-1 bg-gray-500 hover:bg-gray-600 text-white px-6 py-3 rounded-lg font-bold transition"
                 >
-                  Cerrar
+                      ✖ Cerrar
                 </button>
               </div>
             </>
