@@ -11,8 +11,8 @@ type ItemCarrito = {
   precioUnitario: number;
 };
 
-// Ajustá este valor al ID REAL del producto genérico en tu tabla `productos`
-const PRODUCTO_LIBRE_ID = 19;
+// El backend crea productos al vuelo cuando `producto_id` es null,
+// por eso eliminamos el ID hardcodeado para evitar inconsistencias.
 
 export default function CajaRapida() {
   const router = useRouter();
