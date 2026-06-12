@@ -1,13 +1,7 @@
 "use client";
 
-import {
-  AlertCircle,
-  DollarSign,
-  Package,
-  ShoppingCart,
-  TrendingUp,
-  Users,
-} from "lucide-react";
+// Icons replaced with emojis for stability
+
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import CierreCajaModal from "../components/CierreCajaModal";
@@ -190,8 +184,7 @@ export default function DashboardPage() {
         <div className="flex flex-col gap-4 md:flex-row md:justify-between md:items-center mb-6">
           <div>
             <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold flex items-center gap-2 text-gray-800">
-              <TrendingUp className="text-purple-600" />
-              Dashboard
+                📈 Dashboard
             </h1>
             <p className="text-gray-600 text-sm sm:text-base">
               {new Date().toLocaleDateString("es-AR")}
@@ -241,7 +234,7 @@ export default function DashboardPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
               <div className="bg-white p-4 rounded-xl shadow border">
                 <div className="flex items-center gap-3">
-                  <DollarSign className="text-green-600" />
+                  <span className="text-green-600 text-2xl">💵</span>
                   <div>
                     <p className="text-sm text-gray-500">Total del día</p>
                     <p className="text-2xl font-bold">
@@ -253,7 +246,7 @@ export default function DashboardPage() {
 
               <div className="bg-white p-4 rounded-xl shadow border">
                 <div className="flex items-center gap-3">
-                  <ShoppingCart className="text-blue-600" />
+                  <span className="text-blue-600 text-2xl">🛒</span>
                   <div>
                     <p className="text-sm text-gray-500">Pedidos</p>
                     <p className="text-2xl font-bold">
@@ -458,7 +451,7 @@ export default function DashboardPage() {
             {productosBajoStock.length > 0 && (
               <div className="bg-white p-4 rounded-xl shadow mb-6">
                 <h2 className="flex items-center gap-2 font-bold mb-4">
-                  <AlertCircle className="text-orange-500" />
+                  <span className="text-orange-500 text-2xl">⚠️</span>
                   Stock bajo
                 </h2>
 
@@ -483,7 +476,7 @@ export default function DashboardPage() {
                 onClick={() => router.push("/clientes")}
                 className="bg-purple-500 text-white p-4 rounded-xl font-bold"
               >
-                <Users className="mx-auto mb-1" />
+                👥
                 Clientes
               </button>
 
@@ -491,7 +484,7 @@ export default function DashboardPage() {
                 onClick={() => router.push("/productos")}
                 className="bg-blue-500 text-white p-4 rounded-xl font-bold"
               >
-                <Package className="mx-auto mb-1" />
+                📦
                 Productos
               </button>
 
@@ -499,7 +492,7 @@ export default function DashboardPage() {
                 onClick={() => setModalCierreOpen(true)}
                 className="bg-green-500 text-white p-4 rounded-xl font-bold"
               >
-                <DollarSign className="mx-auto mb-1" />
+                💰
                 Caja
               </button>
             </div>
